@@ -1,118 +1,249 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { getSession, useSession, signIn, signOut } from "next-auth/react"
+import dynamic from "next/dynamic"
+const TinderCard = dynamic(() => import('react-tinder-card'), {
+  ssr: false
+});
 
-const inter = Inter({ subsets: ['latin'] })
+export default function Home({connected, tracks}) {
+  const [numberOfTracks, setNumberOfTracks] = useState(0);
+  const [numberOfPages, setNumberOfPages] = useState(0);
+  const [playlistTracks, setPlaylistTracks] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [allTracks, setAllTracks] = useState(tracks);
+  const { data: session } = useSession()
 
-export default function Home() {
-  return (
-    <main
-      className={`flex min-h-screen flex-col items-center justify-between p-24 ${inter.className}`}
-    >
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/pages/index.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+  const [currentIndex, setCurrentIndex] = useState((allTracks && allTracks.items) ? allTracks.items.length - 1 : 49)
+  const [lastDirection, setLastDirection] = useState()
+  // used for outOfFrame closure
+  const currentIndexRef = useRef(currentIndex)
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700/10 after:dark:from-sky-900 after:dark:via-[#0141ff]/40 before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+  const swiped = (direction, nameToDelete, index) => {
+    setLastDirection(direction)
+    updateCurrentIndex(index - 1)
 
-      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+    const track = allTracks.items[index - 1];
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+    if(direction == "right"){
+      let pl_tracks = playlistTracks;
+      pl_tracks = [...pl_tracks, track.track.uri ];
+      setPlaylistTracks(pl_tracks)
+    }
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Discover and deploy boilerplate example Next.js&nbsp;projects.
-          </p>
-        </a>
+    document.getElementById('preview-music').pause();
+    if(track && track.track && track.track.preview_url){
+      document.getElementById('preview-music').setAttribute('src', track.track.preview_url);
+    }
+    document.getElementById('preview-music').play();
+  }
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+  const childRefs = useMemo(
+    () =>
+    (allTracks && allTracks.items) ? 
+      Array(allTracks.items.length)
+        .fill(0)
+        .map((i) => React.createRef()) : 0,
+    []
   )
+  const updateCurrentIndex = (val) => {
+    setCurrentIndex(val)
+    currentIndexRef.current = val
+  }
+
+  const playPreview = (previewUrl) => {
+    // console.log(`You play preview from ${previewUrl}.`);
+
+    document.getElementById('preview-music').pause();
+    document.getElementById('preview-music').setAttribute('src', previewUrl);
+    document.getElementById('preview-music').play();
+  }
+
+  const loadMore = async () => {
+    async function fetchWebApi(endpoint, method, body) {
+      const res = await fetch(`https://api.spotify.com/${endpoint}`, {
+        headers: {
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+        method,
+        body:JSON.stringify(body)
+      });
+      return await res.json();
+    }
+    
+    async function getSavedTracks(){
+      return (await fetchWebApi(
+        `v1/me/tracks?market=FR&limit=50&offset=${50 * currentPage}`, 'GET'
+      ));
+    }
+    
+    const savedTracks = await getSavedTracks();
+    let new_tracks = allTracks;
+    new_tracks.items = [...new_tracks.items, ...savedTracks.items.reverse() ];
+    setAllTracks(new_tracks)
+    setCurrentPage(currentPage + 1)
+  }
+
+
+  const createPlaylist = async () => {
+    async function fetchWebApi(endpoint, method, body) {
+      const res = await fetch(`https://api.spotify.com/${endpoint}`, {
+        headers: {
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+        method,
+        body:JSON.stringify(body)
+      });
+      return await res.json();
+    }
+    
+    async function createPrivatePlaylist(tracksUri){
+      const { id: user_id } = await fetchWebApi('v1/me', 'GET')
+
+      const playlist = await fetchWebApi(
+        `v1/users/${user_id}/playlists`, 'POST', {
+          "name": "My playlist",
+          "description": "Playlist created with music-swipe",
+          "public": false
+      })
+      
+      await fetchWebApi(
+        `v1/playlists/${playlist.id}/tracks?uris=${tracksUri.join(',')}`,
+        'POST'
+      );
+    
+      return playlist;
+    }
+    
+    const createdPlaylist = await createPrivatePlaylist(playlistTracks);
+    // console.log(createdPlaylist);
+  }
+
+  useEffect(() => {
+    setNumberOfTracks((allTracks && allTracks.total) ? allTracks.total : 0);
+    setNumberOfPages((allTracks && allTracks.total) ? Math.ceil(allTracks.total / 50) : 0);
+  }, [allTracks]);
+
+  if(connected == false) {
+    return (
+      <>
+        <button onClick={() => signIn()}>Sign in</button>
+      </>
+    )
+  }else{
+    return (
+      <>
+        <div className='flex flex-col'>
+          <div className="relative w-screen h-[640px] mb-10">
+            <audio id="preview-music" src="" preload="auto"></audio>
+            {allTracks && allTracks.items ? <>
+              {/* Nombre de musiques : {numberOfTracks} <br/>
+              Page {currentPage} sur {numberOfPages} */}
+
+              <div className="absolute m-auto left-0 right-0 mx-auto">
+                <TinderCard 
+                    className={`swipe absolute m-auto left-0 right-0 w-[640px] h-[640px]`}
+                    key="loading-card" 
+                  >
+                    LOADING CARD
+                </TinderCard>
+                {allTracks.items.reverse().map((item, index) => (
+                  <TinderCard 
+                    className={`swipe absolute m-auto left-0 right-0 w-[640px] h-[640px]`}
+                    key={item.track.id} 
+                    ref={childRefs[index]}
+                    onSwipe={(dir) => swiped(dir, item.track.id, index)} 
+                    preventSwipe={["up", "down"]}
+                    swipeRequirementType="position"
+                    swipeThreshold={100}
+                  >
+                    <div className={`w-full h-full relative overflow-hidden rounded-lg bg-cover bg-center`} style={{ backgroundImage: `url(${item.track.album.images[0].url})` }}>
+                      <span>Ref: {index}</span>
+                      <div className="relative text-white px-6 pb-6 mt-6">
+                        <span className="block opacity-75 -mb-1">{item.track.name}</span>
+                        <div className="flex justify-between">
+                          <span className="block font-semibold text-xl">{item.track.artists.map(artist => artist.name).join(', ')}</span>
+                          <button className="bg-white rounded-full text-orange-500 text-xs font-bold px-3 py-2 leading-none flex items-center" onClick={() => playPreview(item.track.preview_url)}>Play</button>
+                        </div>
+                      </div>
+                    </div>
+                  </TinderCard>
+                ))}
+              </div>
+            </> : <>
+              Aucune musique
+            </>}
+          </div>   
+
+          <div className="relative text-center">
+            {
+                currentPage < numberOfPages ? <>
+                  <button onClick={() => loadMore()}>Load more</button>
+                </> : <>
+                  Derniere page
+                </>
+              }
+            <br />
+            <button onClick={() => createPlaylist()} className='mb-6'>Créer la playlist</button>
+
+            <br />
+            <button onClick={() => signOut()}>Sign out</button>
+          </div>  
+        </div>    
+      </> 
+    )
+  }
+}
+
+
+export async function getServerSideProps(context) {
+  const session = await getSession(context)
+  let musics = [];
+
+  async function fetchWebApi(url, method, body) {
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${session.accessToken}`,
+      },
+      method,
+      body:JSON.stringify(body)
+    });
+    return await res.json();
+  }
+
+  try {
+    async function getSavedTracks(url){
+      const v = await fetchWebApi(
+        url, 'GET'
+      );
+      musics.push(v);
+      return v;
+    }
+    
+    const savedTracks = await getSavedTracks('https://api.spotify.com/v1/me/tracks?offset=0&limit=50');
+
+    // console.log(musics);
+
+    if(musics[0].error){
+      return {
+        props : {
+          connected: false,
+        }
+      }
+    }
+
+    return {
+      props : {
+        tracks: savedTracks,
+        connected: true,
+      }
+    }
+  } catch(error) {
+    // console.log('error: ', error)
+    return {
+      props : {
+        error: true,
+        connected: false,
+      }
+    }
+  }  
 }
