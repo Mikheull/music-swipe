@@ -6,13 +6,13 @@ import { PersonCircleOutline, PlayCircleOutline, PauseCircleOutline, MusicalNote
 const TinderCard = dynamic(() => import('react-tinder-card'), {
   ssr: false
 });
-const LIMIT = 50;
+const LIMIT = 25;
 
 export default function Home({connected, total, tracks}) {
     const [numberOfPages, setNumberOfPages] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
     const [playlistTracks, setPlaylistTracks] = useState([]);
-    const [allTracks, setAllTracks] = useState((tracks) ? tracks : []);
+    const [allTracks, setAllTracks] = useState((tracks) ? tracks.reverse() : []);
     const [isPlaying, setIsPlaying] = useState(false);
 
     const { data: session } = useSession()
