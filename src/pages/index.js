@@ -12,7 +12,7 @@ export default function Home({connected, total, tracks}) {
     const [numberOfPages, setNumberOfPages] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
     const [playlistTracks, setPlaylistTracks] = useState([]);
-    const [allTracks, setAllTracks] = useState(tracks.reverse());
+    const [allTracks, setAllTracks] = useState((tracks) ? tracks.reverse() : []);
     const [isPlaying, setIsPlaying] = useState(false);
 
     const { data: session } = useSession()
@@ -124,6 +124,31 @@ export default function Home({connected, total, tracks}) {
         }
     }
 
+
+    // Create the playlist
+    const createPlaylist = async () => {
+        async function createPrivatePlaylist(tracksUri){
+        const { id: user_id } = await fetchWebApi('v1/me', 'GET')
+
+        const playlist = await fetchWebApi(
+            `v1/users/${user_id}/playlists`, 'POST', {
+            "name": "Mika Playlist :)",
+            "description": "Playlist created with music-swipe",
+            "public": false
+        })
+        
+        await fetchWebApi(
+            `v1/playlists/${playlist.id}/tracks?uris=${tracksUri.join(',')}`,
+            'POST'
+        );
+        
+        return playlist;
+    }
+    
+    const createdPlaylist = await createPrivatePlaylist(playlistTracks);
+    // console.log(createdPlaylist);
+  }
+
     useEffect(() => {
         setNumberOfPages((allTracks && total) ? Math.ceil(total / LIMIT) : 0);
     }, [allTracks]);
@@ -224,6 +249,11 @@ export default function Home({connected, total, tracks}) {
                 
 
                 {JSON.stringify(playlistTracks)}
+                {playlistTracks.length > 0 ? <>
+                    <br/><button onClick={() => createPlaylist()} className='mb-6'>Créer la playlist</button>
+                </> : ''}
+                
+                <br/><br/> <button onClick={() => signOut()}>Sign out</button>
                 
             </>
         )
