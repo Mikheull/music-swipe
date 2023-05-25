@@ -5,6 +5,7 @@ const TinderCard = dynamic(() => import('react-tinder-card'), {
   ssr: false
 });
 
+<<<<<<< Updated upstream
 export default function Home({connected, tracks}) {
   const [numberOfTracks, setNumberOfTracks] = useState(0);
   const [numberOfPages, setNumberOfPages] = useState(0);
@@ -12,6 +13,14 @@ export default function Home({connected, tracks}) {
   const [currentPage, setCurrentPage] = useState(1);
   const [allTracks, setAllTracks] = useState(tracks);
   const { data: session } = useSession()
+=======
+export default function Home({connected, total, tracks}) {
+    const [numberOfPages, setNumberOfPages] = useState(0);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [playlistTracks, setPlaylistTracks] = useState([]);
+    const [allTracks, setAllTracks] = useState((tracks) ? tracks : []);
+    const [isPlaying, setIsPlaying] = useState(false);
+>>>>>>> Stashed changes
 
   const [currentIndex, setCurrentIndex] = useState((allTracks && allTracks.items) ? allTracks.items.length - 1 : 49)
   const [lastDirection, setLastDirection] = useState()
