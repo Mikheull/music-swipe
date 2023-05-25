@@ -1,249 +1,314 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { getSession, useSession, signIn, signOut } from "next-auth/react"
 import dynamic from "next/dynamic"
+import { PersonCircleOutline, PlayCircleOutline, PauseCircleOutline, MusicalNoteOutline } from 'react-ionicons'
+
 const TinderCard = dynamic(() => import('react-tinder-card'), {
   ssr: false
 });
+const LIMIT = 50;
 
-export default function Home({connected, tracks}) {
-  const [numberOfTracks, setNumberOfTracks] = useState(0);
-  const [numberOfPages, setNumberOfPages] = useState(0);
-  const [playlistTracks, setPlaylistTracks] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [allTracks, setAllTracks] = useState(tracks);
-  const { data: session } = useSession()
+export default function Home({connected, total, tracks}) {
+    const [numberOfPages, setNumberOfPages] = useState(0);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [playlistTracks, setPlaylistTracks] = useState([]);
+    const [allTracks, setAllTracks] = useState((tracks) ? tracks : []);
+    const [isPlaying, setIsPlaying] = useState(false);
 
-  const [currentIndex, setCurrentIndex] = useState((allTracks && allTracks.items) ? allTracks.items.length - 1 : 49)
-  const [lastDirection, setLastDirection] = useState()
-  // used for outOfFrame closure
-  const currentIndexRef = useRef(currentIndex)
+    const { data: session } = useSession()
 
-  const swiped = (direction, nameToDelete, index) => {
-    setLastDirection(direction)
-    updateCurrentIndex(index - 1)
+    const [currentIndex, setCurrentIndex] = useState((total) ? total - 1 : 0)
+    const currentIndexRef = useRef(currentIndex)
+    const childRefs = useMemo(
+        () =>
+            (total) ? 
+                Array(total)
+                    .fill(0)
+                    .map((i) => React.createRef()) 
+            : 
+                0,
+        []
+    )
 
-    const track = allTracks.items[index - 1];
-
-    if(direction == "right"){
-      let pl_tracks = playlistTracks;
-      pl_tracks = [...pl_tracks, track.track.uri ];
-      setPlaylistTracks(pl_tracks)
-    }
-
-    document.getElementById('preview-music').pause();
-    if(track && track.track && track.track.preview_url){
-      document.getElementById('preview-music').setAttribute('src', track.track.preview_url);
-    }
-    document.getElementById('preview-music').play();
-  }
-
-  const childRefs = useMemo(
-    () =>
-    (allTracks && allTracks.items) ? 
-      Array(allTracks.items.length)
-        .fill(0)
-        .map((i) => React.createRef()) : 0,
-    []
-  )
-  const updateCurrentIndex = (val) => {
-    setCurrentIndex(val)
-    currentIndexRef.current = val
-  }
-
-  const playPreview = (previewUrl) => {
-    // console.log(`You play preview from ${previewUrl}.`);
-
-    document.getElementById('preview-music').pause();
-    document.getElementById('preview-music').setAttribute('src', previewUrl);
-    document.getElementById('preview-music').play();
-  }
-
-  const loadMore = async () => {
+    /**
+     * Method part
+     */
+    // Fetch Spotify Web API
     async function fetchWebApi(endpoint, method, body) {
-      const res = await fetch(`https://api.spotify.com/${endpoint}`, {
-        headers: {
-          Authorization: `Bearer ${session.accessToken}`,
-        },
-        method,
-        body:JSON.stringify(body)
-      });
-      return await res.json();
+        const res = await fetch(`https://api.spotify.com/${endpoint}`, {
+            headers: {
+                Authorization: `Bearer ${session.accessToken}`,
+            },
+            method,
+            body:JSON.stringify(body)
+        });
+        return await res.json();
     }
+
+    // Load more music
+    const loadMore = async () => {
+        async function getSavedTracks(){
+            return (await fetchWebApi(
+              `v1/me/tracks?market=FR&limit=${LIMIT}&offset=${LIMIT * currentPage}`, 'GET'
+            ));
+        }
+
+        const savedTracks = await getSavedTracks();
+
+        if(savedTracks.error){
+            console.log('error on load more');
+        }else{
+            let _savedTracks = savedTracks.items.map(({ track }, index) => ({
+                position: (index + 1) + (LIMIT * currentPage),
+                id: track.id,
+                uri: track.uri,
+                name: track.name,
+                preview_url: track.preview_url,
+                artists: track.artists.map(artist => artist.name).join(', '),
+                cover: track.album.images[0].url,
+            }));
     
-    async function getSavedTracks(){
-      return (await fetchWebApi(
-        `v1/me/tracks?market=FR&limit=50&offset=${50 * currentPage}`, 'GET'
-      ));
+            setAllTracks([...allTracks, ..._savedTracks.reverse()])
+
+            // Play preview
+            const track = _savedTracks[_savedTracks.length - 1];
+            console.log(track, (LIMIT * currentPage) + 1);
+            if((track)){
+                if(isPlaying){
+                    document.getElementById('preview-music').pause();
+                }
+                
+                if(track && track.preview_url){
+                    document.getElementById('preview-music').setAttribute('src', track.preview_url);
+                    document.getElementById('preview-music').play();
+                }
+            }
+    
+            setIsPlaying(true);
+            setCurrentPage(currentPage + 1)
+        }
     }
-    
-    const savedTracks = await getSavedTracks();
-    let new_tracks = allTracks;
-    new_tracks.items = [...new_tracks.items, ...savedTracks.items.reverse() ];
-    setAllTracks(new_tracks)
-    setCurrentPage(currentPage + 1)
-  }
+
+    // Play preview music
+    const togglePreview = (previewUrl) => {
+        if(isPlaying){
+            document.getElementById('preview-music').pause();
+        }else{
+            document.getElementById('preview-music').pause();
+            document.getElementById('preview-music').setAttribute('src', previewUrl);
+            document.getElementById('preview-music').play();
+        }
+        setIsPlaying(!isPlaying);
+    }
+
+    // Swiped functions
+    const swiped = (direction, index) => {
+        const track = allTracks[index - 1];
+
+        if((track) && !playlistTracks.includes(track.uri)){
+            if(direction == "right"){
+                const arr = playlistTracks;
+                arr.push(track.uri);
+                setPlaylistTracks(arr);
+            }
+        
+            if(isPlaying){
+                document.getElementById('preview-music').pause();
+            }
+            
+            if(track && track.preview_url){
+                document.getElementById('preview-music').setAttribute('src', track.preview_url);
+                document.getElementById('preview-music').play();
+                setIsPlaying(true);
+            }
+        }
+    }
 
 
-  const createPlaylist = async () => {
-    async function fetchWebApi(endpoint, method, body) {
-      const res = await fetch(`https://api.spotify.com/${endpoint}`, {
-        headers: {
-          Authorization: `Bearer ${session.accessToken}`,
-        },
-        method,
-        body:JSON.stringify(body)
-      });
-      return await res.json();
-    }
-    
-    async function createPrivatePlaylist(tracksUri){
-      const { id: user_id } = await fetchWebApi('v1/me', 'GET')
+    // Create the playlist
+    const createPlaylist = async () => {
+        async function createPrivatePlaylist(tracksUri){
+        const { id: user_id } = await fetchWebApi('v1/me', 'GET')
 
-      const playlist = await fetchWebApi(
-        `v1/users/${user_id}/playlists`, 'POST', {
-          "name": "My playlist",
-          "description": "Playlist created with music-swipe",
-          "public": false
-      })
-      
-      await fetchWebApi(
-        `v1/playlists/${playlist.id}/tracks?uris=${tracksUri.join(',')}`,
-        'POST'
-      );
-    
-      return playlist;
+        const playlist = await fetchWebApi(
+            `v1/users/${user_id}/playlists`, 'POST', {
+            "name": "Mika Playlist :)",
+            "description": "Playlist created with music-swipe",
+            "public": false
+        })
+        
+        await fetchWebApi(
+            `v1/playlists/${playlist.id}/tracks?uris=${tracksUri.join(',')}`,
+            'POST'
+        );
+        
+        return playlist;
     }
     
     const createdPlaylist = await createPrivatePlaylist(playlistTracks);
     // console.log(createdPlaylist);
   }
 
-  useEffect(() => {
-    setNumberOfTracks((allTracks && allTracks.total) ? allTracks.total : 0);
-    setNumberOfPages((allTracks && allTracks.total) ? Math.ceil(allTracks.total / 50) : 0);
-  }, [allTracks]);
+    useEffect(() => {
+        setNumberOfPages((allTracks && total) ? Math.ceil(total / LIMIT) : 0);
+    }, [allTracks]);
 
-  if(connected == false) {
-    return (
-      <>
-        <button onClick={() => signIn()}>Sign in</button>
-      </>
-    )
-  }else{
-    return (
-      <>
-        <div className='flex flex-col'>
-          <div className="relative w-screen h-[640px] mb-10">
-            <audio id="preview-music" src="" preload="auto"></audio>
-            {allTracks && allTracks.items ? <>
-              {/* Nombre de musiques : {numberOfTracks} <br/>
-              Page {currentPage} sur {numberOfPages} */}
+    /**
+     * Render part
+     */
+    if(connected == false) {
+        return (
+          <>
+            <button onClick={() => signIn()}>Sign in</button>
+          </>
+        )
 
-              <div className="absolute m-auto left-0 right-0 mx-auto">
-                <TinderCard 
-                    className={`swipe absolute m-auto left-0 right-0 w-[640px] h-[640px]`}
-                    key="loading-card" 
-                  >
-                    LOADING CARD
-                </TinderCard>
-                {allTracks.items.reverse().map((item, index) => (
-                  <TinderCard 
-                    className={`swipe absolute m-auto left-0 right-0 w-[640px] h-[640px]`}
-                    key={item.track.id} 
-                    ref={childRefs[index]}
-                    onSwipe={(dir) => swiped(dir, item.track.id, index)} 
-                    preventSwipe={["up", "down"]}
-                    swipeRequirementType="position"
-                    swipeThreshold={100}
-                  >
-                    <div className={`w-full h-full relative overflow-hidden rounded-lg bg-cover bg-center`} style={{ backgroundImage: `url(${item.track.album.images[0].url})` }}>
-                      <span>Ref: {index}</span>
-                      <div className="relative text-white px-6 pb-6 mt-6">
-                        <span className="block opacity-75 -mb-1">{item.track.name}</span>
-                        <div className="flex justify-between">
-                          <span className="block font-semibold text-xl">{item.track.artists.map(artist => artist.name).join(', ')}</span>
-                          <button className="bg-white rounded-full text-orange-500 text-xs font-bold px-3 py-2 leading-none flex items-center" onClick={() => playPreview(item.track.preview_url)}>Play</button>
+    // Si l'user est connecté
+    }else{
+        return (
+            <>
+                {/* Audio part */}
+                <audio id="preview-music" src="" preload="auto"></audio>
+
+                {/* Tracks part*/}
+                <div className="relative bg-yellow-400 h-screen w-screen py-10">
+                    <div className="mx-auto max-w-lg bg-blue-200 h-full">
+                        <div className='flex justify-between'>
+                            <div>
+                                <PersonCircleOutline
+                                    color={'#000'}
+                                    height={'32px'}
+                                    width={'32px'}
+                                />
+                            </div>
+                            <div>
+                                <MusicalNoteOutline
+                                    color={'#000'}
+                                    height={'32px'}
+                                    width={'32px'}
+                                />
+                            </div>
                         </div>
-                      </div>
+
+                        <div className='relative w-full h-full mt-4 overflow-hidden'>
+                            {/* Partie temporaire du load more */}
+                            <div className='absolute w-full h-full flex items-center justify-center'>
+                                {
+                                    currentPage < numberOfPages ? <>
+                                        <button onClick={() => loadMore()}>Load more</button> ({currentPage}/{Math.ceil(total / LIMIT) })
+                                    </> : <> Derniere page</>
+                                }
+                            </div>
+
+                            {allTracks ? 
+                                allTracks.map((item, index) => (
+                                    <TinderCard 
+                                        className={`swipe absolute m-auto left-0 right-0 w-full h-full`}
+                                        key={index}
+                                        ref={childRefs[item.position]}
+                                        onSwipe={(dir) => swiped(dir, index)} 
+                                        preventSwipe={["up", "down"]}
+                                        swipeRequirementType="position"
+                                        swipeThreshold={100}
+                                    >
+                                        <div className={`w-full h-full relative overflow-hidden rounded-lg bg-cover bg-center`} style={{ backgroundImage: `url(${item.cover})` }}>
+                                            <div className="absolute bottom-0 w-full flex justify-between px-6 pb-6 mt-6">
+                                                <div className="">
+                                                    <span>{item.position} - {index}</span>
+                                                    <span className="block">{item.name}</span>
+                                                    <span className="block font-semibold text-xl">{item.artists}</span>
+                                                </div>
+
+                                                <button className="p-0" onClick={() => togglePreview(item.preview_url)}>
+                                                    {!isPlaying ? 
+                                                        <PlayCircleOutline
+                                                            color={'#FFF'}
+                                                            height={'32px'}
+                                                            width={'32px'}
+                                                        />
+                                                    :
+                                                        <PauseCircleOutline
+                                                            color={'#FFF'}
+                                                            height={'32px'}
+                                                            width={'32px'}
+                                                        />
+                                                    }
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </TinderCard>
+                                ))
+                            :
+                                <>Aucune musique </>
+                            }
+                        </div>
+                        
                     </div>
-                  </TinderCard>
-                ))}
-              </div>
-            </> : <>
-              Aucune musique
-            </>}
-          </div>   
 
-          <div className="relative text-center">
-            {
-                currentPage < numberOfPages ? <>
-                  <button onClick={() => loadMore()}>Load more</button>
-                </> : <>
-                  Derniere page
-                </>
-              }
-            <br />
-            <button onClick={() => createPlaylist()} className='mb-6'>Créer la playlist</button>
+                </div>
+                
 
-            <br />
-            <button onClick={() => signOut()}>Sign out</button>
-          </div>  
-        </div>    
-      </> 
-    )
-  }
+                {JSON.stringify(playlistTracks)}
+                {playlistTracks.length > 0 ? <>
+                    <br/><button onClick={() => createPlaylist()} className='mb-6'>Créer la playlist</button>
+                </> : ''}
+                
+                <br/><br/> <button onClick={() => signOut()}>Sign out</button>
+                
+            </>
+        )
+    }
 }
 
 
 export async function getServerSideProps(context) {
-  const session = await getSession(context)
-  let musics = [];
+    const session = await getSession(context)
 
-  async function fetchWebApi(url, method, body) {
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${session.accessToken}`,
-      },
-      method,
-      body:JSON.stringify(body)
-    });
-    return await res.json();
-  }
-
-  try {
-    async function getSavedTracks(url){
-      const v = await fetchWebApi(
-        url, 'GET'
-      );
-      musics.push(v);
-      return v;
+    async function fetchWebApi(url, method, body) {
+        const res = await fetch(url, {
+            headers: {
+                Authorization: `Bearer ${session.accessToken}`,
+            },
+            method,
+            body:JSON.stringify(body)
+        });
+        return await res.json();
     }
-    
-    const savedTracks = await getSavedTracks('https://api.spotify.com/v1/me/tracks?offset=0&limit=50');
 
-    // console.log(musics);
-
-    if(musics[0].error){
-      return {
-        props : {
-          connected: false,
+    try {
+        // Get the 50 last recent saved tracks
+        async function getSavedTracks(url){
+            return await fetchWebApi(url, 'GET');
         }
-      }
-    }
+        const savedTracks = await getSavedTracks(`https://api.spotify.com/v1/me/tracks?offset=0&limit=${LIMIT}`);
+        if(savedTracks.error){
+            return {
+                props : {
+                    connected: false,
+                }
+            }
+        }
 
-    return {
-      props : {
-        tracks: savedTracks,
-        connected: true,
-      }
-    }
-  } catch(error) {
-    // console.log('error: ', error)
-    return {
-      props : {
-        error: true,
-        connected: false,
-      }
-    }
-  }  
+        return {
+            props : {
+                tracks : savedTracks.items.map(({ track }, index) => ({
+                    position: index + 1,
+                    id: track.id,
+                    uri: track.uri,
+                    name: track.name,
+                    preview_url: track.preview_url,
+                    artists: track.artists.map(artist => artist.name).join(', '),
+                    cover: track.album.images[0].url,
+                })),
+                total: savedTracks.total,
+                connected: true,
+            }
+        }
+    } catch(error) {
+        return {
+            props : {
+                connected: false,
+            }
+        }
+    }  
 }
