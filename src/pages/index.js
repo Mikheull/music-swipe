@@ -7,7 +7,7 @@ import { PersonCircleOutline, PlayCircleOutline, PauseCircleOutline, MusicalNote
 const TinderCard = dynamic(() => import('../libs/react-tinder-card.js'), {
   ssr: false
 });
-const LIMIT = 4;
+const LIMIT = 50;
 
 export default function Home({connected, total, tracks}) {
     const [numberOfPages, setNumberOfPages] = useState(0);
@@ -264,7 +264,7 @@ export default function Home({connected, total, tracks}) {
                                                         </button>
                                                     </div>
                                                     <div className="p-6 space-y-6">
-                                                        <div className='bg-[#1E073B] overflow-scroll px-10 py-5 rounded-lg h-[60vh]'>
+                                                        <div className='bg-[#1E073B] overflow-scroll px-10 py-5 rounded-lg h-[55vh]'>
                                                             <h2 className='text-lg font-bold'>My custom playlist</h2>
                                                             <p className='text-sm text-[#C996EE]'>Playlist created with music-swipe</p>
             
