@@ -193,7 +193,7 @@ export default function Home({connected, total, tracks}) {
                 <audio id="preview-music" src="" preload="auto"></audio>
 
                 {/* Tracks part*/}
-                <div className="relative bg-yellow-400 h-screen w-screen py-10">
+                <div className="relative bg-yellow-400 h-screen w-screen py-10 select-none">
                     <div className="mx-auto max-w-lg bg-[#1E073B] h-full">
                         <div className='relative w-full h-full mt-4 overflow-hidden'>
                              {/* Heading part  */}
@@ -228,7 +228,7 @@ export default function Home({connected, total, tracks}) {
                                                 height={'32px'}
                                                 width={'32px'}
                                             /> 
-                                            <span className='text-xs text-[#C996EE]'>{playlistTracks.length}</span>
+                                            <span className='text-xs text-[#C996EE]'>{(playlistTracks.length !== 0) ?playlistTracks.length : ''}</span>
                                         </button>
                                     </div>
                                 </div>
