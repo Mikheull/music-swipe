@@ -193,7 +193,7 @@ export default function Home({connected, total, tracks}) {
         return (
             <>
                 {/* Audio part */}
-                <audio id="preview-music" src={(tracks && tracks[0].preview_url) ? tracks[0].preview_url : ''} preload="auto"></audio>
+                <audio id="preview-music" src="" preload="auto"></audio>
 
                 {/* Tracks part*/}
                 <div className="relative bg-yellow-400 h-screen w-screen select-none">
