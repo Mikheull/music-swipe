@@ -193,12 +193,12 @@ export default function Home({connected, total, tracks}) {
         return (
             <>
                 {/* Audio part */}
-                <audio id="preview-music" src="" preload="auto"></audio>
+                <audio id="preview-music" src={(tracks && tracks[0].preview_url) ? tracks[0].preview_url : ''} preload="auto"></audio>
 
                 {/* Tracks part*/}
-                <div className="relative bg-yellow-400 h-screen w-screen py-10 select-none">
+                <div className="relative bg-yellow-400 h-screen w-screen select-none">
                     <div className="mx-auto max-w-lg bg-[#1E073B] h-full">
-                        <div className='relative w-full h-full mt-4 overflow-hidden'>
+                        <div className='relative w-full h-full overflow-hidden'>
                              {/* Heading part  */}
                             <div className='absolute z-10 w-100 w-full'>
                                 <div className='flex justify-between px-6 pb-6 mt-4'>
