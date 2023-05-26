@@ -198,7 +198,7 @@ export default function Home({connected, total, tracks}) {
     if(connected == false) {
         return (
           <>
-            <div className='absolute w-screen h-screen flex items-center justify-center bg-white'>
+            <div className='absolute w-screen h-[calc(100dvh)] flex items-center justify-center bg-white'>
                 <button onClick={() => signIn('spotify')} type="button" className="text-white bg-[#9658c2] hover:bg-[#C996EE] font-medium rounded-lg text-sm px-5 py-2.5 text-center">Sign in</button>
             </div>
           </>
@@ -212,9 +212,9 @@ export default function Home({connected, total, tracks}) {
                 <audio id="preview-music" src="" preload="auto"></audio>
 
                 {/* Tracks part*/}
-                <div className="relative bg-yellow-400 h-screen w-screen select-none" style={{ height: "-webkit-fill-available" }}>
+                <div className="relative bg-yellow-400 h-[calc(100dvh)] w-screen inset-0 select-none" style={{ height: "-webkit-fill-available" }}>
                     <div className="mx-auto max-w-lg bg-[#1E073B] h-full">
-                        <div className='relative w-full h-screen overflow-hidden'>
+                        <div className='relative w-full h-[calc(100dvh)] overflow-hidden'>
                             {/* Heading part  */}
                             <div className='absolute z-[99999] w-100 w-full'>
                                 <div className='flex justify-between px-6 pb-6 mt-4'>
