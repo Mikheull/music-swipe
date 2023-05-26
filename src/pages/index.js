@@ -1,5 +1,4 @@
-import { Dropdown, Button, Modal } from 'flowbite-react';
-
+import { Dropdown } from 'flowbite-react';
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { getSession, useSession, signIn, signOut } from "next-auth/react"
 import dynamic from "next/dynamic"
@@ -8,7 +7,7 @@ import { PersonCircleOutline, PlayCircleOutline, PauseCircleOutline, MusicalNote
 const TinderCard = dynamic(() => import('react-tinder-card'), {
   ssr: false
 });
-const LIMIT = 50;
+const LIMIT = 25;
 
 export default function Home({connected, total, tracks}) {
     const [numberOfPages, setNumberOfPages] = useState(0);
@@ -93,7 +92,11 @@ export default function Home({connected, total, tracks}) {
     }
 
     // Play preview music
-    const togglePreview = (previewUrl) => {
+    const togglePreview = () => {
+        const track = allTracks[(currentIndex) ? currentIndex : 1];
+        console.log(currentIndex, (currentIndex) ? 0 : 1, track);
+        
+        const previewUrl = '';
         if(isPlaying){
             document.getElementById('preview-music').pause();
         }else{
@@ -302,29 +305,13 @@ export default function Home({connected, total, tracks}) {
                                         swipeRequirementType="position"
                                         swipeThreshold={100}
                                     >
-                                        <div ref={childRefs[item.position]} className={`w-full h-full relative overflow-hidden rounded-lg bg-cover bg-center`} style={{ backgroundImage: `url(${item.cover})` }}>
+                                        <div ref={childRefs[item.position]} className={`w-full h-full relative overflow-hidden bg-cover bg-center`} style={{ backgroundImage: `url(${item.cover})` }}>
                                             <div className="absolute bottom-0 w-full flex justify-between px-6 pb-6 mt-6">
                                                 <div className="">
                                                     <span>{item.position} - {index}</span>
                                                     <span className="block">{item.name}</span>
                                                     <span className="block font-semibold text-xl">{item.artists}</span>
                                                 </div>
-
-                                                <button className="p-0" onClick={() => togglePreview(item.preview_url)}>
-                                                    {!isPlaying ? 
-                                                        <PlayCircleOutline
-                                                            color={'#FFF'}
-                                                            height={'32px'}
-                                                            width={'32px'}
-                                                        />
-                                                    :
-                                                        <PauseCircleOutline
-                                                            color={'#FFF'}
-                                                            height={'32px'}
-                                                            width={'32px'}
-                                                        />
-                                                    }
-                                                </button>
                                             </div>
                                         </div>
                                     </TinderCard>
@@ -332,6 +319,28 @@ export default function Home({connected, total, tracks}) {
                             :
                                 <>Aucune musique </>
                             }
+
+                            {/* Play button */}
+                            {/* <div className='absolute z-10 w-100 w-full bottom-0'>
+                                <div className='flex justify-between px-6 pb-6 mt-4'>
+                                    <div></div>
+                                    <button className="p-0" onClick={() => togglePreview()}>
+                                        {!isPlaying ? 
+                                            <PlayCircleOutline
+                                                color={'#FFF'}
+                                                height={'32px'}
+                                                width={'32px'}
+                                            />
+                                        :
+                                            <PauseCircleOutline
+                                                color={'#FFF'}
+                                                height={'32px'}
+                                                width={'32px'}
+                                            />
+                                        }
+                                    </button>
+                                </div>
+                            </div> */}
                         </div>
                     </div>
                 </div>
