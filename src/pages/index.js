@@ -1,8 +1,8 @@
-import { Dropdown, Modal } from 'flowbite-react';
+import { Dropdown } from 'flowbite-react';
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { getSession, useSession, signIn, signOut } from "next-auth/react"
 import dynamic from "next/dynamic"
-import { PersonCircleOutline, PlayCircleOutline, PauseCircleOutline, MusicalNoteOutline } from 'react-ionicons'
+import { PlayCircleOutline, PauseCircleOutline, MusicalNoteOutline } from 'react-ionicons'
 
 const TinderCard = dynamic(() => import('../libs/react-tinder-card.js'), {
   ssr: false
@@ -93,10 +93,6 @@ export default function Home({connected, total, tracks}) {
             const track = [...allTracks, ..._savedTracks][currentIndex];
 
             if((track)){
-                if(isPlaying){
-                    document.getElementById('preview-music').pause();
-                }
-                
                 if(track && track.preview_url){
                     document.getElementById('preview-music').setAttribute('src', track.preview_url);
                     document.getElementById('preview-music').play();
@@ -116,7 +112,6 @@ export default function Home({connected, total, tracks}) {
         if(isPlaying){
             document.getElementById('preview-music').pause();
         }else{
-            document.getElementById('preview-music').pause();
             document.getElementById('preview-music').setAttribute('src', track.preview_url);
             document.getElementById('preview-music').play();
         }
@@ -152,13 +147,15 @@ export default function Home({connected, total, tracks}) {
             
             // On joue la prochaine musique
             if(next_track && next_track.preview_url && childRefs[track.position + 1].current){
-                document.getElementById('preview-music').pause();
                 document.getElementById('preview-music').setAttribute('src', next_track.preview_url);
                 document.getElementById('preview-music').play();
                 setIsPlaying(true);
             }else{
                 document.getElementById('preview-music').pause();
             }
+
+            // On clean le childRefs
+            childRefs.shift()
         }
     }
 
@@ -188,7 +185,7 @@ export default function Home({connected, total, tracks}) {
         }
         const createdPlaylist = await createPrivatePlaylist(playlistTracks);
 
-        console.log(createdPlaylist);
+        // console.log(createdPlaylist);
     }
     
     useEffect(() => {
@@ -222,7 +219,6 @@ export default function Home({connected, total, tracks}) {
                             <div className='absolute z-[99999] w-100 w-full'>
                                 <div className='flex justify-between px-6 pb-6 mt-4'>
                                     <div>
-                                    
                                         <Dropdown
                                             inline
                                             label={
