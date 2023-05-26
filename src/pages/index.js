@@ -7,7 +7,7 @@ import { PersonCircleOutline, PlayCircleOutline, PauseCircleOutline, MusicalNote
 const TinderCard = dynamic(() => import('../libs/react-tinder-card.js'), {
   ssr: false
 });
-const LIMIT = 50;
+const LIMIT = 4;
 
 export default function Home({connected, total, tracks}) {
     const [numberOfPages, setNumberOfPages] = useState(0);
@@ -340,26 +340,29 @@ export default function Home({connected, total, tracks}) {
                                     }
         
                                     {/* Play button */}
-                                    <div className='absolute z-[99999] w-100 w-full bottom-0'>
-                                        <div className='flex justify-between px-6 pb-6 mt-4'>
-                                            <div></div>
-                                            <button className="p-0" onClick={() => togglePreview()}>
-                                                {!isPlaying ? 
-                                                    <PlayCircleOutline
-                                                        color={'#FFF'}
-                                                        height={'32px'}
-                                                        width={'32px'}
-                                                    />
-                                                :
-                                                    <PauseCircleOutline
-                                                        color={'#FFF'}
-                                                        height={'32px'}
-                                                        width={'32px'}
-                                                    />
-                                                }
-                                            </button>
+                                    {(LIMIT * currentPage !== currentIndex) ? 
+                                        <div className='absolute z-[99999] w-100 w-full bottom-0'>
+                                            <div className='flex justify-between px-6 pb-6 mt-4'>
+                                                <div></div>
+                                                <button className="p-0" onClick={() => togglePreview()}>
+                                                    {!isPlaying ? 
+                                                        <PlayCircleOutline
+                                                            color={'#FFF'}
+                                                            height={'32px'}
+                                                            width={'32px'}
+                                                        />
+                                                    :
+                                                        <PauseCircleOutline
+                                                            color={'#FFF'}
+                                                            height={'32px'}
+                                                            width={'32px'}
+                                                        />
+                                                    }
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
+                                    :  ''}
+                                    
                                 </>
                             : 
                                 <>
