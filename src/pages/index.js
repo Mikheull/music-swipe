@@ -2,7 +2,7 @@ import { Dropdown } from 'flowbite-react';
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { getSession, useSession, signIn, signOut } from "next-auth/react"
 import dynamic from "next/dynamic"
-import { PlayCircleOutline, PauseCircleOutline, MusicalNoteOutline } from 'react-ionicons'
+import { PlayCircleOutline, PauseCircleOutline, MusicalNoteOutline, TrashOutline } from 'react-ionicons'
 
 const TinderCard = dynamic(() => import('../libs/react-tinder-card.js'), {
   ssr: false
@@ -273,11 +273,22 @@ export default function Home({connected, total, tracks}) {
                                                                             <span className='italic text-xs text-gray-400'>It&apos;s too quiet I don&apos;t like it much</span>
                                                                         :
                                                                             playlistTracks.map((item, index) => (
-                                                                                <li className='flex items-center' key={index + 1}>
-                                                                                    <span className='text-sm text-primary mr-4 font-bold'>{index + 1}</span>
-                                                                                    <div className=''>
-                                                                                        <p className=''>{item.name}</p>
-                                                                                        <p className='italic text-sm text-primary font-medium'>{item.artists}</p>
+                                                                                <li className='flex items-center justify-between' key={index + 1}>
+                                                                                    <div className='flex items-center'>
+                                                                                        <span className='text-sm text-primary mr-4 font-bold'>{index + 1}</span>
+                                                                                        <div className=''>
+                                                                                            <p className=''>{item.name}</p>
+                                                                                            <p className='italic text-sm text-primary font-medium'>{item.artists}</p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <TrashOutline
+                                                                                            color={'#FFF'}
+                                                                                            height={'16px'}
+                                                                                            width={'16px'}
+                                                                                            className="cursor-pointer"
+                                                                                            onClick={() => setPassedTracks(playlistTracks.splice(index, 1))}
+                                                                                        /> 
                                                                                     </div>
                                                                                 </li>
                                                                             ))
@@ -326,7 +337,7 @@ export default function Home({connected, total, tracks}) {
                                                 swipeThreshold={100}
                                             >
                                                 <div ref={childRefs[item.position]} className={`w-full h-full relative overflow-hidden bg-cover bg-center`} style={{ backgroundImage: `url(${item.cover})` }}>
-                                                    <div className="absolute bottom-0 w-full flex justify-between px-6 pb-6 mt-6">
+                                                    <div className="absolute bottom-0 w-full flex justify-between px-6 pb-6 pt-28 gradientback bg-white">
                                                         <div className="">
                                                             <span className="block font-semibold text-primary-600 text-3xl">{item.name}</span>
                                                             <span className="block italic text-lg font-medium">{item.artists}</span>
