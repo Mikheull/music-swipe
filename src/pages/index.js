@@ -262,7 +262,7 @@ export default function Home({connected, total, tracks}) {
                                                         </button>
                                                     </div>
                                                     <div className="p-6 space-y-6">
-                                                        <div className='bg-[#1E073B] overflow-scroll px-10 py-5 rounded-lg h-[55vh]'>
+                                                        <div className='bg-[#1E073B] overflow-scroll px-5 md:px-10 py-5 rounded-lg h-[55vh]'>
                                                             <h2 className='text-lg font-bold'>{playlistName}</h2>
                                                             <p className='text-sm text-primary'>Playlist created with music-swipe</p>
             
