@@ -199,7 +199,7 @@ export default function Home({connected, total, tracks}) {
         return (
           <>
             <div className='absolute w-screen h-[calc(100dvh)] flex items-center justify-center bg-white'>
-                <button onClick={() => signIn('spotify')} type="button" className="text-white bg-[#9658c2] hover:bg-[#C996EE] font-medium rounded-lg text-sm px-5 py-2.5 text-center">Sign in</button>
+                <button onClick={() => signIn('spotify')} type="button" className="text-white bg-primary-600 hover:bg-primary-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center">Sign in</button>
             </div>
           </>
         )
@@ -222,12 +222,12 @@ export default function Home({connected, total, tracks}) {
                                         <Dropdown
                                             inline
                                             label={
-                                                <img className="w-10 h-10 p-1 rounded-full ring-2 ring-[#C996EE]" src={(session && session.user && session.user.image) ? session.user.image : ''} alt="Spotify avatar" />
+                                                <img className="w-10 h-10 p-1 rounded-full ring-2 ring-primary-700" src={(session && session.user && session.user.image) ? session.user.image : ''} alt="Spotify avatar" />
                                             }
                                         >
                                             <Dropdown.Header>
                                                 <span className="block text-sm">
-                                                    Hello <span className='text-[#C996EE]'>{(session && session.user && session.user.name) ? session.user.name : 'stranger'}</span>
+                                                    Hello <span className='text-primary-700'>{(session && session.user && session.user.name) ? session.user.name : 'stranger'}</span>
                                                 </span>
                                             </Dropdown.Header>
                                             
@@ -238,25 +238,25 @@ export default function Home({connected, total, tracks}) {
                                     </div>
                                     <div>
                                         <div className="relative">
-                                            <button data-modal-target="playlistModal" data-modal-toggle="playlistModal" className="flex items-center bg-[#C996EE] rounded-full p-2" type="button">
+                                            <button data-modal-target="playlistModal" data-modal-toggle="playlistModal" className="flex items-center bg-primary-600 rounded-full p-2" type="button">
                                                 <MusicalNoteOutline
                                                     color={'#FFF'}
                                                     height={'32px'}
                                                     width={'32px'}
                                                 /> 
                                             </button>
-                                            <span className={`${(playlistTracks.length > 0 ? '' : 'hidden')} absolute bottom-0 left-8 transform font-bold flex items-center justify-center translate-y-1/4 w-5 h-5 bg-white rounded-full text-xs text-[#C996EE]`}>{(playlistTracks.length !== 0) ?playlistTracks.length : ''}</span>
+                                            <span className={`${(playlistTracks.length > 0 ? '' : 'hidden')} absolute bottom-0 left-8 transform font-bold flex items-center justify-center translate-y-1/4 w-5 h-5 bg-white rounded-full text-xs text-primary-700`}>{(playlistTracks.length !== 0) ?playlistTracks.length : ''}</span>
                                         </div>
 
                                         {/* Modal */}
                                         <div id="playlistModal" tabIndex="-1" className="fixed z-[99999] top-0 left-0 right-0 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
                                             <div className="relative w-full max-w-2xl max-h-full">
-                                                <div className="relative bg-white rounded-lg shadow dark:bg-gray-700">
-                                                    <div className="flex items-center justify-between p-5 border-b rounded-t dark:border-gray-600">
-                                                        <h3 className="text-xl font-medium text-gray-900 dark:text-white">
+                                                <div className="relative bg-white rounded-lg shadow">
+                                                    <div className="flex items-center justify-between p-5 border-b rounded-t">
+                                                        <h3 className="text-xl font-medium text-gray-900">
                                                             Create your playlist
                                                         </h3>
-                                                        <button type="button" className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-600 dark:hover:text-white" data-modal-hide="playlistModal">
+                                                        <button type="button" className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" data-modal-hide="playlistModal">
                                                             <svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"></path></svg>
                                                             <span className="sr-only">Close modal</span>
                                                         </button>
@@ -264,7 +264,7 @@ export default function Home({connected, total, tracks}) {
                                                     <div className="p-6 space-y-6">
                                                         <div className='bg-[#1E073B] overflow-scroll px-10 py-5 rounded-lg h-[55vh]'>
                                                             <h2 className='text-lg font-bold'>{playlistName}</h2>
-                                                            <p className='text-sm text-[#C996EE]'>Playlist created with music-swipe</p>
+                                                            <p className='text-sm text-primary'>Playlist created with music-swipe</p>
             
                                                             <div className='mt-5'>
                                                                 <ul className='flex flex-col gap-2'>
@@ -274,10 +274,10 @@ export default function Home({connected, total, tracks}) {
                                                                         :
                                                                             playlistTracks.map((item, index) => (
                                                                                 <li className='flex items-center' key={index + 1}>
-                                                                                    <span className='text-sm text-[#C996EE] mr-4 font-bold'>{index + 1}</span>
+                                                                                    <span className='text-sm text-primary mr-4 font-bold'>{index + 1}</span>
                                                                                     <div className=''>
                                                                                         <p className=''>{item.name}</p>
-                                                                                        <p className='italic text-sm text-[#C996EE] font-medium'>{item.artists}</p>
+                                                                                        <p className='italic text-sm text-primary font-medium'>{item.artists}</p>
                                                                                     </div>
                                                                                 </li>
                                                                             ))
@@ -286,10 +286,10 @@ export default function Home({connected, total, tracks}) {
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center p-6 space-x-2 border-t border-gray-200 rounded-b dark:border-gray-600">
+                                                    <div className="flex items-center p-6 space-x-2 border-t border-gray-200 rounded-b">
                                                         <input onChange={(e) => setPlaylistName(e.target.value)} type="text" className={`${(playlistTracks.length > 0 ? '' : 'hidden')} bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5`} placeholder="My playlist name"/>
-                                                        <button data-modal-hide="playlistModal" onClick={() => createPlaylist()} type="button" className={`${(playlistTracks.length > 0 ? '' : 'hidden')} text-white bg-[#9658c2] hover:bg-[#C996EE] focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800`}>Create</button>
-                                                        <button data-modal-hide="playlistModal" type="button" className="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-500 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-600">Cancel</button>
+                                                        <button data-modal-hide="playlistModal" onClick={() => createPlaylist()} type="button" className={`${(playlistTracks.length > 0 ? '' : 'hidden')} text-white bg-primary-600 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center`}>Create</button>
+                                                        <button data-modal-hide="playlistModal" type="button" className="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10">Cancel</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -304,13 +304,13 @@ export default function Home({connected, total, tracks}) {
                                         {
                                             currentPage < numberOfPages ? <>
                                                 <div role="status">
-                                                    <svg aria-hidden="true" class="w-8 h-8 mr-2 animate-spin text-[#C996EE] fill-[#C996EE]" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <svg aria-hidden="true" class="w-8 h-8 mr-2 animate-spin text-primary-700 fill-primary-700" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                         <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
                                                         <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
                                                     </svg>
                                                     <span class="sr-only">Loading...</span>
                                                 </div>
-                                            </> : <> You&apos;ve reached the end</>
+                                            </> : <p className='text-primary-700'> You&apos;ve reached the end</p>
                                         }
                                     </div>
         
@@ -328,7 +328,7 @@ export default function Home({connected, total, tracks}) {
                                                 <div ref={childRefs[item.position]} className={`w-full h-full relative overflow-hidden bg-cover bg-center`} style={{ backgroundImage: `url(${item.cover})` }}>
                                                     <div className="absolute bottom-0 w-full flex justify-between px-6 pb-6 mt-6">
                                                         <div className="">
-                                                            <span className="block font-semibold text-[#C996EE] text-3xl">{item.name}</span>
+                                                            <span className="block font-semibold text-primary-600 text-3xl">{item.name}</span>
                                                             <span className="block italic text-lg font-medium">{item.artists}</span>
                                                         </div>
                                                     </div>
@@ -367,7 +367,7 @@ export default function Home({connected, total, tracks}) {
                             : 
                                 <>
                                     <div className='flex w-full h-full items-center justify-center bg-white'>
-                                        <button onClick={() => startApp()} type="button" className="text-white bg-[#9658c2] hover:bg-[#C996EE] font-medium rounded-lg text-sm px-5 py-2.5 text-center">Start</button>
+                                        <button onClick={() => startApp()} type="button" className="text-white bg-primary-600 hover:bg-primary-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center">Start</button>
                                     </div>
                                 </>
                             }
