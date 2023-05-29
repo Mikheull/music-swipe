@@ -12,9 +12,8 @@ const LIMIT = 50;
 export default function Home({connected, total, tracks}) {
     const [numberOfPages, setNumberOfPages] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
-    const [passedTracks, setPassedTracks] = useState([]);
     const [playlistTracks, setPlaylistTracks] = useState([]);
-    const [playlistTracksFull, setPlaylistTracksFull] = useState([]);
+    const [passedTracks, setPassedTracks] = useState([]);
     const [allTracks, setAllTracks] = useState((tracks) ? tracks : []);
     const [isPlaying, setIsPlaying] = useState(false);
     const [started, setStarted] = useState(false);
@@ -125,26 +124,24 @@ export default function Home({connected, total, tracks}) {
 
         if((track) && !passedTracks.includes(track.uri)){
             // On stock un tableau des musiques passées pour éviter les duplication
-            const arr = passedTracks;
-            arr.push(track.uri);
-            setPassedTracks(arr);
+            const passed_arr = passedTracks;
+            passed_arr.push(track.uri);
+            setPassedTracks(passed_arr);
 
             childRefs[track.position].current.parentNode.remove()
-
+            
             // On met à jour l'index pour la musique suivante
             updateCurrentIndex(track.position)
 
             // If liked
             if(direction == "right"){
                 const arr = playlistTracks;
-                arr.push(track.uri);
-                setPlaylistTracks(arr);
-
-                const arrFull = playlistTracksFull;
-                arrFull.push(track);
-                setPlaylistTracksFull(arrFull);
+                if(!arr.find((el) => el.uri == track.uri)){
+                    arr.push(track);
+                    setPlaylistTracks(arr);
+                }
             }
-            
+
             // On joue la prochaine musique
             if(next_track && next_track.preview_url && childRefs[track.position + 1].current){
                 document.getElementById('preview-music').setAttribute('src', next_track.preview_url);
@@ -183,8 +180,7 @@ export default function Home({connected, total, tracks}) {
             
             return playlist;
         }
-        const createdPlaylist = await createPrivatePlaylist(playlistTracks);
-
+        const createdPlaylist = await createPrivatePlaylist(playlistTracks.map( e => e.uri ));
         // console.log(createdPlaylist);
     }
     
@@ -269,10 +265,10 @@ export default function Home({connected, total, tracks}) {
                                                             <div className='mt-5'>
                                                                 <ul className='flex flex-col gap-2'>
                                                                     {
-                                                                        (playlistTracksFull.length == 0) ? 
+                                                                        (playlistTracks.length == 0) ? 
                                                                             <span className='italic text-xs text-gray-400'>It&apos;s too quiet I don&apos;t like it much</span>
                                                                         :
-                                                                            playlistTracksFull.map((item, index) => (
+                                                                            playlistTracks.map((item, index) => (
                                                                                 <li className='flex items-center' key={index + 1}>
                                                                                     <span className='text-sm text-[#C996EE] mr-4 font-bold'>{index + 1}</span>
                                                                                     <div className=''>
@@ -336,7 +332,7 @@ export default function Home({connected, total, tracks}) {
         
                                     {/* Play button */}
                                     {(LIMIT * currentPage !== currentIndex) ? 
-                                        <div className='absolute z-[99999] w-100 w-full bottom-0'>
+                                        <div className='absolute z-[99998] w-100 w-full bottom-0'>
                                             <div className='flex justify-between px-6 pb-6 mt-4'>
                                                 <div></div>
                                                 <button className="p-0" onClick={() => togglePreview()}>
