@@ -7,9 +7,10 @@ import { PlayCircleOutline, PauseCircleOutline, MusicalNoteOutline, TrashOutline
 const TinderCard = dynamic(() => import('../libs/react-tinder-card.js'), {
   ssr: false
 });
-const LIMIT = 50;
+const SPOTIFY_LIMIT = 50;
+const DEEZER_LIMIT = 25;
 
-export default function Home({connected, total, tracks, provider}) {
+export default function Home({connected, total, loved_id, tracks, provider}) {
     const [numberOfPages, setNumberOfPages] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
     const [playlistTracks, setPlaylistTracks] = useState([]);
@@ -49,7 +50,7 @@ export default function Home({connected, total, tracks, provider}) {
         return await res.json();
     }
     async function fetchDeezerWebApi(endpoint, method, body) {
-        const res = await fetch(`https://cors-anywhere.herokuapp.com/https://api.deezer.com/${endpoint}`, {
+        const res = await fetch(`https://api.deezer.com/${endpoint}`, {
             method,
             body:JSON.stringify(body)
         });
@@ -73,18 +74,26 @@ export default function Home({connected, total, tracks, provider}) {
     // Load more music
     const loadMore = async () => {
         async function getSavedTracks(){
-            return (await fetchWebApi(
-              `v1/me/tracks?market=FR&limit=${LIMIT}&offset=${LIMIT * currentPage}`, 'GET'
-            ));
+            if(provider == 'spotify'){
+                return (await fetchWebApi(
+                    `v1/me/tracks?market=FR&limit=${SPOTIFY_LIMIT}&offset=${SPOTIFY_LIMIT * currentPage}`, 'GET'
+                    ));
+            }else if(provider == 'deezer'){
+                return (await fetchDeezerWebApi(
+                    `playlist/${loved_id}/tracks?index=${DEEZER_LIMIT * currentPage}`, 'GET'
+                    ));
+            }
+            return []; 
         }
-
+    
         const savedTracks = await getSavedTracks();
+        console.log(savedTracks);
 
         if(savedTracks.error){
             console.log('error on load more');
         }else{
             let _savedTracks = savedTracks.items.map(({ track }, index) => ({
-                position: (index + 1) + (LIMIT * currentPage),
+                position: (index + 1) + (SPOTIFY_LIMIT * currentPage),
                 id: track.id,
                 uri: track.uri,
                 name: track.name,
@@ -96,7 +105,7 @@ export default function Home({connected, total, tracks, provider}) {
             setAllTracks([...allTracks, ..._savedTracks])
 
             // Play preview
-            const track = [...allTracks, ..._savedTracks][LIMIT * currentPage];
+            const track = [...allTracks, ..._savedTracks][SPOTIFY_LIMIT * currentPage];
 
             if((track)){
                 if(track && track.preview_url){
@@ -220,7 +229,7 @@ export default function Home({connected, total, tracks, provider}) {
     }
     
     useEffect(() => {
-        setNumberOfPages((allTracks && total) ? Math.ceil(total / LIMIT) : 0);
+        setNumberOfPages((allTracks && total) ? Math.ceil(total / ((provider == 'spotify') ? SPOTIFY_LIMIT : DEEZER_LIMIT)) : 0);
     }, [allTracks]);
 
     /**
@@ -229,7 +238,7 @@ export default function Home({connected, total, tracks, provider}) {
     if(connected == false) {
         return (
           <>
-            <div className='absolute w-screen h-[calc(100dvh)] bg-primary'>
+            <div className='absolute w-screen h-[calc(100dvh)] bg-primary-900'>
                 <div className="mx-auto max-w-lg bg-[#1E073B] h-full">
                     <div className='relative w-full h-[calc(100dvh)] overflow-hidden flex flex-col gap-2 items-center justify-center'>
                         <AlbumsOutline
@@ -239,12 +248,12 @@ export default function Home({connected, total, tracks, provider}) {
                         /> 
 
                         <h1 className='text-center block font-semibold text-white text-3xl'>Create your ideal<br/> playlist</h1>
-                        <button onClick={() => signIn('spotify')} type="button" className="flex gap-2 items-center justify-center mt-6 text-white bg-spotify hover:bg-spotify-600 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-                            <svg fill='#FFF' width="24" height="24" xmlns="http://www.w3.org/2000/svg" fillRule="evenodd" clipRule="evenodd"><path d="M19.098 10.638c-3.868-2.297-10.248-2.508-13.941-1.387-.593.18-1.22-.155-1.399-.748-.18-.593.154-1.22.748-1.4 4.239-1.287 11.285-1.038 15.738 1.605.533.317.708 1.005.392 1.538-.316.533-1.005.709-1.538.392zm-.126 3.403c-.272.44-.847.578-1.287.308-3.225-1.982-8.142-2.557-11.958-1.399-.494.15-1.017-.129-1.167-.623-.149-.495.13-1.016.624-1.167 4.358-1.322 9.776-.682 13.48 1.595.44.27.578.847.308 1.286zm-1.469 3.267c-.215.354-.676.465-1.028.249-2.818-1.722-6.365-2.111-10.542-1.157-.402.092-.803-.16-.895-.562-.092-.403.159-.804.562-.896 4.571-1.045 8.492-.595 11.655 1.338.353.215.464.676.248 1.028zm-5.503-17.308c-6.627 0-12 5.373-12 12 0 6.628 5.373 12 12 12 6.628 0 12-5.372 12-12 0-6.627-5.372-12-12-12z"/></svg>
+                        <button onClick={() => signIn('spotify')} type="button" className="flex group gap-2 items-center justify-center mt-6 text-spotify hover:text-white border border-spotify hover:bg-spotify font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                            <svg className='fill-spotify group-hover:fill-white' width="24" height="24" xmlns="http://www.w3.org/2000/svg" fillRule="evenodd" clipRule="evenodd"><path d="M19.098 10.638c-3.868-2.297-10.248-2.508-13.941-1.387-.593.18-1.22-.155-1.399-.748-.18-.593.154-1.22.748-1.4 4.239-1.287 11.285-1.038 15.738 1.605.533.317.708 1.005.392 1.538-.316.533-1.005.709-1.538.392zm-.126 3.403c-.272.44-.847.578-1.287.308-3.225-1.982-8.142-2.557-11.958-1.399-.494.15-1.017-.129-1.167-.623-.149-.495.13-1.016.624-1.167 4.358-1.322 9.776-.682 13.48 1.595.44.27.578.847.308 1.286zm-1.469 3.267c-.215.354-.676.465-1.028.249-2.818-1.722-6.365-2.111-10.542-1.157-.402.092-.803-.16-.895-.562-.092-.403.159-.804.562-.896 4.571-1.045 8.492-.595 11.655 1.338.353.215.464.676.248 1.028zm-5.503-17.308c-6.627 0-12 5.373-12 12 0 6.628 5.373 12 12 12 6.628 0 12-5.372 12-12 0-6.627-5.372-12-12-12z"/></svg>
                             Sign in with Spotify
                         </button>
-                        <button onClick={() => signIn('deezer')} type="button" className="flex gap-2 items-center justify-center mt-6 text-white bg-deezer hover:bg-deezer-600 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-                            <svg fill='#FFF' width="24" height="24" xmlns="http://www.w3.org/2000/svg" fillRule="evenodd" clipRule="evenodd"><path d="M19.098 10.638c-3.868-2.297-10.248-2.508-13.941-1.387-.593.18-1.22-.155-1.399-.748-.18-.593.154-1.22.748-1.4 4.239-1.287 11.285-1.038 15.738 1.605.533.317.708 1.005.392 1.538-.316.533-1.005.709-1.538.392zm-.126 3.403c-.272.44-.847.578-1.287.308-3.225-1.982-8.142-2.557-11.958-1.399-.494.15-1.017-.129-1.167-.623-.149-.495.13-1.016.624-1.167 4.358-1.322 9.776-.682 13.48 1.595.44.27.578.847.308 1.286zm-1.469 3.267c-.215.354-.676.465-1.028.249-2.818-1.722-6.365-2.111-10.542-1.157-.402.092-.803-.16-.895-.562-.092-.403.159-.804.562-.896 4.571-1.045 8.492-.595 11.655 1.338.353.215.464.676.248 1.028zm-5.503-17.308c-6.627 0-12 5.373-12 12 0 6.628 5.373 12 12 12 6.628 0 12-5.372 12-12 0-6.627-5.372-12-12-12z"/></svg>
+                        <button onClick={() => signIn('deezer')} type="button" className="flex group gap-2 items-center justify-center mt-6 text-deezer hover:text-white border border-deezer hover:bg-deezer font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                            <svg className='fill-deezer group-hover:fill-white' width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path d="M451.46,244.71H576V172H451.46Zm0-173.89v72.67H576V70.82Zm0,275.06H576V273.2H451.46ZM0,447.09H124.54V374.42H0Zm150.47,0H275V374.42H150.47Zm150.52,0H425.53V374.42H301Zm150.47,0H576V374.42H451.46ZM301,345.88H425.53V273.2H301Zm-150.52,0H275V273.2H150.47Zm0-101.17H275V172H150.47Z"/></svg>
                             Sign in with Deezer
                         </button>
                     </div>
@@ -400,7 +409,7 @@ export default function Home({connected, total, tracks, provider}) {
                                     }
         
                                     {/* Play button */}
-                                    {(LIMIT * currentPage !== currentIndex) ? 
+                                    {( SPOTIFY_LIMIT * currentPage !== currentIndex) ? 
                                         <div className='absolute z-[99998] w-100 w-full bottom-0'>
                                             <div className='flex justify-between px-6 pb-6 mt-4'>
                                                 <div></div>
@@ -482,6 +491,7 @@ export async function getServerSideProps(context) {
                             }
                         }
                     }
+                    // console.log(loved_playlist);
 
                     async function getDeezerLovedTracks(url){
                         return await fetchWebApi(url, 'GET');
@@ -510,6 +520,7 @@ export async function getServerSideProps(context) {
                                 cover: track.album.cover_big,
                             })),
                             total: loved_playlist.nb_tracks,
+                            loved_id: loved_playlist.id,
                             connected: true,
                             provider: 'deezer'
                         }
@@ -521,7 +532,7 @@ export async function getServerSideProps(context) {
                     async function getSpotifySavedTracks(url){
                         return await fetchWebApi(url, 'GET');
                     }
-                    const spotify_savedTracks = await getSpotifySavedTracks(`https://api.spotify.com/v1/me/tracks?offset=0&limit=${LIMIT}`);
+                    const spotify_savedTracks = await getSpotifySavedTracks(`https://api.spotify.com/v1/me/tracks?offset=0&limit=${SPOTIFY_LIMIT}`);
                     if(spotify_savedTracks.error){
                         return {
                             props : {

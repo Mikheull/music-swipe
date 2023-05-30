@@ -16,6 +16,9 @@ export default NextAuth({
       type: "oauth",
       authorization: {
         url: "https://connect.deezer.com/oauth/auth.php",
+        urll:  `https://connect.deezer.com/oauth/auth.php?${new URLSearchParams({
+          perms: "basic_access,manage_community,manage_library,offline_access",
+        })}`,
         params: { perms: "basic_access,manage_community,manage_library,offline_access" },
       },
       token: {
