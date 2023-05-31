@@ -2,22 +2,31 @@ import { Dropdown } from 'flowbite-react';
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { getSession, useSession, signIn, signOut } from "next-auth/react"
 import dynamic from "next/dynamic"
-import { PlayCircleOutline, PauseCircleOutline, MusicalNoteOutline, TrashOutline, AlbumsOutline } from 'react-ionicons'
+import { PlayCircleOutline, PauseCircleOutline, MusicalNoteOutline, TrashOutline, AlbumsOutline, SearchOutline, ArrowForwardCircleOutline } from 'react-ionicons'
 
 const TinderCard = dynamic(() => import('../libs/react-tinder-card.js'), {
   ssr: false
 });
 const SPOTIFY_LIMIT = 50;
-const DEEZER_LIMIT = 25;
 
-export default function Home({connected, total, loved_id, tracks, provider}) {
+export default function Home({connected, total, tracks, provider}) {
     const [numberOfPages, setNumberOfPages] = useState(0);
-    const [currentPage, setCurrentPage] = useState(1);
     const [playlistTracks, setPlaylistTracks] = useState([]);
     const [passedTracks, setPassedTracks] = useState([]);
     const [allTracks, setAllTracks] = useState((tracks) ? tracks : []);
+
+    const [searchedId, setSearchedId] = useState(null);
+    const [searchByUrl, setSearchByUrl] = useState(null);
+    const [loadedPlaylistId, setLoadedPlaylistId] = useState(null);
+    const [numberOfPagesPlaylist, setNumberOfPagesPlaylist] = useState(0);
+    const [allTracksPlaylist, setAllTracksPlaylist] = useState([]);
+    const [totalPlaylist, setTotalPlaylist] = useState(0);
+
+    const [currentPage, setCurrentPage] = useState(1);
     const [isPlaying, setIsPlaying] = useState(false);
     const [started, setStarted] = useState(false);
+    const [appMode, setAppMode] = useState(null);
+    const [displayBgCover, setDisplayBgCover] = useState(null);
     const [playlistName, setPlaylistName] = useState('My Custom Playlist');
 
     const { data: session } = useSession()
@@ -26,13 +35,13 @@ export default function Home({connected, total, loved_id, tracks, provider}) {
     const currentIndexRef = useRef(currentIndex)
     const childRefs = useMemo(
         () =>
-            (total) ? 
-                Array(total)
+            ((appMode == 'saved_tracks') ? total : totalPlaylist) ? 
+                Array((appMode == 'saved_tracks') ? total : totalPlaylist)
                     .fill(0)
                     .map((i) => React.createRef()) 
             : 
                 0,
-        [tracks]
+        [started]
     )
 
     /**
@@ -49,80 +58,115 @@ export default function Home({connected, total, loved_id, tracks, provider}) {
         });
         return await res.json();
     }
-    async function fetchDeezerWebApi(endpoint, method, body) {
-        const res = await fetch(`https://api.deezer.com/${endpoint}`, {
-            method,
-            body:JSON.stringify(body)
-        });
-        return await res.json();
-    }
 
     // Start the app
-    const startApp = async () => {
+    const startApp = async (mode) => {
         setStarted(true);
         setIsPlaying(true);
+        setAppMode(mode);
 
-        const track = tracks[0];
+        const track = (mode == 'saved_tracks') ? allTracks[0] : allTracksPlaylist[0];
         if((track)){
             if(track && track.preview_url){
                 document.getElementById('preview-music').setAttribute('src', track.preview_url);
                 document.getElementById('preview-music').play();
+                // document.getElementById('preview-music').volume = 0.05;
             }
         }
     }
 
     // Load more music
     const loadMore = async () => {
-        async function getSavedTracks(){
-            if(provider == 'spotify'){
-                return (await fetchWebApi(
-                    `v1/me/tracks?market=FR&limit=${SPOTIFY_LIMIT}&offset=${SPOTIFY_LIMIT * currentPage}`, 'GET'
-                    ));
-            }else if(provider == 'deezer'){
-                return (await fetchDeezerWebApi(
-                    `playlist/${loved_id}/tracks?index=${DEEZER_LIMIT * currentPage}`, 'GET'
-                    ));
-            }
-            return []; 
-        }
-    
-        const savedTracks = await getSavedTracks();
-        console.log(savedTracks);
-
-        if(savedTracks.error){
-            console.log('error on load more');
-        }else{
-            let _savedTracks = savedTracks.items.map(({ track }, index) => ({
-                position: (index + 1) + (SPOTIFY_LIMIT * currentPage),
-                id: track.id,
-                uri: track.uri,
-                name: track.name,
-                preview_url: track.preview_url,
-                artists: track.artists.map(artist => artist.name).join(', '),
-                cover: track.album.images[0].url,
-            }));
-    
-            setAllTracks([...allTracks, ..._savedTracks])
-
-            // Play preview
-            const track = [...allTracks, ..._savedTracks][SPOTIFY_LIMIT * currentPage];
-
-            if((track)){
-                if(track && track.preview_url){
-                    document.getElementById('preview-music').setAttribute('src', track.preview_url);
-                    document.getElementById('preview-music').play();
+        if(appMode == 'saved_tracks'){
+            async function getSavedTracks(){
+                if(provider == 'spotify'){
+                    return (await fetchWebApi(
+                        `v1/me/tracks?market=FR&limit=${SPOTIFY_LIMIT}&offset=${SPOTIFY_LIMIT * currentPage}`, 'GET'
+                        ));
                 }
+                return []; 
             }
+        
+            const savedTracks = await getSavedTracks();
     
+            if(savedTracks.error){
+                console.log('error on load more');
+            }else{
+                let _savedTracks = savedTracks.items.map(({ track }, index) => ({
+                    position: (index + 1) + (SPOTIFY_LIMIT * currentPage),
+                    id: track.id,
+                    uri: track.uri,
+                    name: track.name,
+                    preview_url: track.preview_url,
+                    artists: track.artists.map(artist => artist.name).join(', '),
+                    cover: track.album.images[0].url,
+                }));
+        
+                setAllTracks([...allTracks, ..._savedTracks])
+    
+                // Play preview
+                const track = [...allTracks, ..._savedTracks][SPOTIFY_LIMIT * currentPage];
+    
+                if((track)){
+                    if(track && track.preview_url){
+                        document.getElementById('preview-music').setAttribute('src', track.preview_url);
+                        document.getElementById('preview-music').play();
+                    }
+                }
+    
+                setIsPlaying(true);
+                setCurrentPage(currentPage + 1)
+            }
+        }
 
-            setIsPlaying(true);
-            setCurrentPage(currentPage + 1)
+        else if(appMode == 'playlist'){
+            async function getPlaylistSavedTracks(){
+                if(provider == 'spotify'){
+                    return (await fetchWebApi(
+                        `v1/playlists/${loadedPlaylistId}/tracks?offset=${(50 * currentPage - 1) + 1}&limit=50`, 'GET'
+                        ));
+                }
+                return []; 
+            }
+        
+            const savedTracks = await getPlaylistSavedTracks();
+    
+            if(savedTracks.error){
+                console.log('error on load more');
+            }else{
+                let _savedTracks = savedTracks.items.map(({ track }, index) => ({
+                    position: (index + 1) + ((currentPage == 2 ? 100 : 50 * currentPage)),
+                    id: track.id,
+                    uri: track.uri,
+                    name: track.name,
+                    preview_url: track.preview_url,
+                    artists: track.artists.map(artist => artist.name).join(', '),
+                    cover: track.album.images[0].url,
+                }));
+        
+                console.log(_savedTracks);
+                setAllTracksPlaylist([...allTracksPlaylist, ..._savedTracks])
+    
+                // Play preview
+                const track = [...allTracksPlaylist, ..._savedTracks][((currentPage == 2 ? 99 : 50 * currentPage))];
+    
+                if((track)){
+                    if(track && track.preview_url){
+                        console.log(track);
+                        document.getElementById('preview-music').setAttribute('src', track.preview_url);
+                        document.getElementById('preview-music').play();
+                    }
+                }
+    
+                setIsPlaying(true);
+                setCurrentPage(currentPage + 1)
+            }
         }
     }
 
     // Play preview music
     const togglePreview = () => {
-        const track = allTracks[(currentIndex) ? currentIndex : 0];
+        const track = (appMode == 'saved_tracks') ? allTracks[(currentIndex) ? currentIndex : 0] : allTracksPlaylist[(currentIndex) ? currentIndex : 0];
         
         if(isPlaying){
             document.getElementById('preview-music').pause();
@@ -135,8 +179,8 @@ export default function Home({connected, total, loved_id, tracks, provider}) {
 
     // Swiped functions
     const swiped = async (direction, index) => {
-        const track = allTracks[index];
-        const next_track = allTracks[index + 1];
+        const track = (appMode == 'saved_tracks') ? allTracks[index] : allTracksPlaylist[index];
+        const next_track = (appMode == 'saved_tracks') ? allTracks[index + 1] : allTracksPlaylist[index + 1];
 
         if((track) && !passedTracks.includes(track.uri)){
             // On stock un tableau des musiques passées pour éviter les duplication
@@ -159,16 +203,17 @@ export default function Home({connected, total, loved_id, tracks, provider}) {
             }
 
             // On joue la prochaine musique
+            console.log(track.position + 1, childRefs[track.position + 1].current);
             if(next_track && next_track.preview_url && childRefs[track.position + 1].current){
                 document.getElementById('preview-music').setAttribute('src', next_track.preview_url);
                 document.getElementById('preview-music').play();
                 setIsPlaying(true);
             }else{
-                await loadMore();
-                
-                if(track.position == total){
-                    document.getElementById('preview-music').pause();
+                if(!childRefs[track.position + 1].current){
+                    await loadMore();
                 }
+                
+                document.getElementById('preview-music').pause();
             }
 
             // On clean le childRefs
@@ -198,39 +243,149 @@ export default function Home({connected, total, loved_id, tracks, provider}) {
                 );
                 
                 return playlist;
-            } else if(provider == 'deezer'){
-                console.log('create from deezer', session);
-        // http://api.deezer.com/playlist/<playlist_id>/tracks?access_token=<access_token>&request_method=post&songs=<track_id>
-
-        
-        console.log(session.accessToken);
-                const playlist = await fetchDeezerWebApi(
-                    `user/${session.accountId}/playlists?access_token=${session.accessToken}`, 'POST', {
-                    "title": playlistName,
-                    "description": "Playlist created with music-swipe",
-                    "public": false
-                })
-                
-                const add_songs = await fetchDeezerWebApi(
-                    `playlist/${playlist.id}/tracks?access_token=${session.accessToken}`, 'POST', {
-                    "songs": tracksUri.join(','),
-                    "description": "Playlist created with music-swipe",
-                    "public": false
-                })
-                console.log(add_songs);
-                
-                return playlist;
             }
 
             return false
         }
         const createdPlaylist = await createPrivatePlaylist(playlistTracks.map( e => e.uri ));
-        console.log(createdPlaylist);
     }
     
     useEffect(() => {
-        setNumberOfPages((allTracks && total) ? Math.ceil(total / ((provider == 'spotify') ? SPOTIFY_LIMIT : DEEZER_LIMIT)) : 0);
-    }, [allTracks]);
+        setNumberOfPages((allTracks && total) ? Math.ceil(total / SPOTIFY_LIMIT) : 0);
+        setDisplayBgCover(displayCoverBackground());
+    }, []);
+
+    function shuffleArr (array){
+        for (var i = array.length - 1; i > 0; i--) {
+            var rand = Math.floor(Math.random() * (i + 1));
+            [array[i], array[rand]] = [array[rand], array[i]]
+        }
+        return array
+    }
+
+    // Display a random cover tracks in background
+    const displayCoverBackground = () => {
+        if(allTracks && allTracks.length > 1){
+            const covers = shuffleArr(allTracks.map((track, index) => ({
+                cover: track.cover,
+            })));
+
+            return (
+                <>
+                    <div className='bg-black w-full h-full absolute z-0 '>
+                        <div>
+                            <div className={`m-auto left-0 right-0 absolute -top-[40px] flex justify-center gap-24`}>
+                                <div data-cover-position="1" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[0].cover) ? covers[0].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="2" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[1].cover) ? covers[1].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                            </div>
+                        
+                            <div className={`m-auto -left-[32px] top-[70px] absolute flex justify-center gap-24`}>
+                                <div data-cover-position="3" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[2].cover) ? covers[2].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="4" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[3].cover) ? covers[3].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="5" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[4].cover) ? covers[4].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className={`m-auto left-0 right-0 absolute top-[180px] flex justify-center gap-24`}>
+                                <div data-cover-position="6" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[5].cover) ? covers[5].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="7" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[6].cover) ? covers[6].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                            </div>
+                        
+                            <div className={`m-auto -left-[32px] top-[290px] absolute flex justify-center gap-24`}>
+                                <div data-cover-position="8" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[7].cover) ? covers[7].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="9" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[8].cover) ? covers[8].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="10" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[9].cover) ? covers[9].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className={`m-auto left-0 right-0 absolute -top-[400px] flex justify-center gap-24`}>
+                                <div data-cover-position="11" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[10].cover) ? covers[10].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="12" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[11].cover) ? covers[11].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                            </div>
+                        
+                            <div className={`m-auto -left-[32px] top-[510px] absolute flex justify-center gap-24`}>
+                                <div data-cover-position="13" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[12].cover) ? covers[12].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="14" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[13].cover) ? covers[13].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="15" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[14].cover) ? covers[14].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                            </div>
+                        </div>
+
+                        {/* {(() => {
+                            const options = [];
+
+                            let _start_top = -40;
+                            let pos = 0;
+                            for (let i = 1; i <= 3; i++) {
+                                options.push(
+                                    <div key={i}>
+                                        <div className={`m-auto left-0 right-0 absolute ${i == 1 ? '-top-[40px]' : `top-[${_start_top}px]`} flex justify-center gap-24`}>
+                                            <div data-cover-position={pos + 1} className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[pos].cover) ? covers[pos].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                            <div data-cover-position={pos + 2} className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[pos + 1].cover) ? covers[pos + 1].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                        </div>
+                                    
+                                        <div className={`m-auto -left-[32px] top-[${_start_top + 110}px] absolute flex justify-center gap-24`}>
+                                            <div data-cover-position={pos + 3} className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[pos + 2].cover) ? covers[pos + 2].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                            <div data-cover-position={pos + 4} className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[pos + 3].cover) ? covers[pos + 3].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                            <div data-cover-position={pos + 5} className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[pos + 4].cover) ? covers[pos + 4].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                        </div>
+                                    </div>
+                                );
+                                pos = pos + 5;
+                                _start_top = _start_top + 220;
+                            }
+
+                            return options;
+                        })()} */}
+                        <div className="absolute bottom-0 w-full h-full flex justify-between px-6 pb-6 gradientback"></div>
+                    </div>
+                </>
+            )
+        }
+    }
+
+    // Search a playlist from Url
+    const searchPlaylist = async () => {
+        if(searchedId){
+            const regex = /^.*\/(playlist)\/|\?.*/;
+            let processedUrl = searchedId.replace(regex, "");
+            processedUrl = (processedUrl.includes("?")) ? processedUrl.substr(0, processedUrl.lastIndexOf("?")) : processedUrl;
+            
+            async function search_playlist_by_id(){
+                return (await fetchWebApi(
+                    `v1/playlists/${processedUrl}`, 'GET'
+                    ));
+            }
+
+            // Search playlist
+            const founded_playlist = await search_playlist_by_id();
+            if(founded_playlist.error){
+                setSearchByUrl(null)
+            }else{
+                let _allTracks = founded_playlist.tracks.items.map(({ track }, index) => ({
+                    position: (index + 1),
+                    id: track.id,
+                    uri: track.uri,
+                    name: track.name,
+                    preview_url: track.preview_url,
+                    artists: track.artists.map(artist => artist.name).join(', '),
+                    cover: track.album.images[0].url,
+                }));
+
+                console.log(_allTracks);
+                setLoadedPlaylistId(processedUrl)
+                setAllTracksPlaylist([...allTracksPlaylist, ..._allTracks])
+                setNumberOfPagesPlaylist((founded_playlist && founded_playlist.tracks.total) ? Math.ceil(founded_playlist.tracks.total / 50) : 0);
+                setCurrentPage(2)
+                setTotalPlaylist(founded_playlist.tracks.total)
+                setSearchByUrl(founded_playlist)
+                setAppMode('playlist')
+            }
+        }else{
+            setSearchByUrl(null)
+        }
+    }
 
     /**
      * Render part
@@ -252,10 +407,6 @@ export default function Home({connected, total, loved_id, tracks, provider}) {
                             <svg className='fill-spotify group-hover:fill-white' width="24" height="24" xmlns="http://www.w3.org/2000/svg" fillRule="evenodd" clipRule="evenodd"><path d="M19.098 10.638c-3.868-2.297-10.248-2.508-13.941-1.387-.593.18-1.22-.155-1.399-.748-.18-.593.154-1.22.748-1.4 4.239-1.287 11.285-1.038 15.738 1.605.533.317.708 1.005.392 1.538-.316.533-1.005.709-1.538.392zm-.126 3.403c-.272.44-.847.578-1.287.308-3.225-1.982-8.142-2.557-11.958-1.399-.494.15-1.017-.129-1.167-.623-.149-.495.13-1.016.624-1.167 4.358-1.322 9.776-.682 13.48 1.595.44.27.578.847.308 1.286zm-1.469 3.267c-.215.354-.676.465-1.028.249-2.818-1.722-6.365-2.111-10.542-1.157-.402.092-.803-.16-.895-.562-.092-.403.159-.804.562-.896 4.571-1.045 8.492-.595 11.655 1.338.353.215.464.676.248 1.028zm-5.503-17.308c-6.627 0-12 5.373-12 12 0 6.628 5.373 12 12 12 6.628 0 12-5.372 12-12 0-6.627-5.372-12-12-12z"/></svg>
                             Sign in with Spotify
                         </button>
-                        <button onClick={() => signIn('deezer')} type="button" className="flex group gap-2 items-center justify-center mt-6 text-deezer hover:text-white border border-deezer hover:bg-deezer font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-                            <svg className='fill-deezer group-hover:fill-white' width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><path d="M451.46,244.71H576V172H451.46Zm0-173.89v72.67H576V70.82Zm0,275.06H576V273.2H451.46ZM0,447.09H124.54V374.42H0Zm150.47,0H275V374.42H150.47Zm150.52,0H425.53V374.42H301Zm150.47,0H576V374.42H451.46ZM301,345.88H425.53V273.2H301Zm-150.52,0H275V273.2H150.47Zm0-101.17H275V172H150.47Z"/></svg>
-                            Sign in with Deezer
-                        </button>
                     </div>
                 </div>
             </div>
@@ -264,6 +415,7 @@ export default function Home({connected, total, loved_id, tracks, provider}) {
 
     // Si l'user est connecté
     }else{
+        const list_tracks = (appMode == 'saved_tracks') ? allTracks : allTracksPlaylist
         return (
             <>
                 {/* Audio part */}
@@ -280,6 +432,7 @@ export default function Home({connected, total, loved_id, tracks, provider}) {
                                         <Dropdown
                                             inline
                                             label={
+                                                // eslint-disable-next-line @next/next/no-img-element
                                                 <img className="w-10 h-10 p-1 rounded-full ring-2 ring-primary-700" src={(session && session.user && session.user.image) ? session.user.image : ''} alt="Spotify avatar" />
                                             }
                                         >
@@ -295,7 +448,7 @@ export default function Home({connected, total, loved_id, tracks, provider}) {
                                         </Dropdown>
                                     </div>
                                     <div>
-                                        <div className="relative">
+                                        <div className={`${(started ? '' : 'hidden')} relative`}>
                                             <button data-modal-target="playlistModal" data-modal-toggle="playlistModal" className="flex items-center bg-primary-600 rounded-full p-2" type="button">
                                                 <MusicalNoteOutline
                                                     color={'#FFF'}
@@ -383,8 +536,8 @@ export default function Home({connected, total, loved_id, tracks, provider}) {
                                         }
                                     </div>
         
-                                    {allTracks ? 
-                                        allTracks.map((item, index) => (
+                                    {list_tracks ? 
+                                        list_tracks.map((item, index) => (
                                             <TinderCard 
                                                 className={`swipe absolute m-auto left-0 right-0 w-full h-full`}
                                                 key={index}
@@ -435,8 +588,63 @@ export default function Home({connected, total, loved_id, tracks, provider}) {
                                 </>
                             : 
                                 <>
-                                    <div className='flex w-full h-full items-center justify-center bg-white'>
-                                        <button onClick={() => startApp()} type="button" className="text-white bg-primary-600 hover:bg-primary-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center">Start</button>
+                                    <div className='flex w-full h-full items-center justify-center bg-white relative'>
+                                        {displayBgCover}
+
+                                        <div className='z-[99999] w-3/4'>
+                                            <button onClick={() => startApp('saved_tracks')} type="button" className="mx-auto flex group gap-2 items-center justify-center mt-6 text-black hover:text-spotify hover:bg-white bg-spotify font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                                                Continue with saved tracks
+                                            </button>
+
+                                            <div className="relative flex py-5 items-center w-full">
+                                                <div className="flex-grow border-t border-primary-400"></div>
+                                                <span className="flex-shrink mx-4 text-primary-400">OR</span>
+                                                <div className="flex-grow border-t border-primary-400"></div>
+                                            </div>
+
+                                            <div>
+                                                <div className="flex">
+                                                    <input onChange={(e) => setSearchedId(e.target.value)} type="search" id="search_playlist" className="rounded-none rounded-l-lg bg-gray-50 border text-gray-900 focus:ring-blue-500 focus:border-blue-500 block flex-1 min-w-0 w-full text-sm border-gray-300 p-2.5" placeholder="Full URl or Spotify ID" />
+                                                    <button onClick={(e) => searchPlaylist()} className="inline-flex items-center px-3 text-sm text-gray-900 bg-gray-200  rounded-r-lg">
+                                                        <SearchOutline
+                                                            color={'#000'}
+                                                            height={'16px'}
+                                                            width={'16px'}
+                                                            className="cursor-pointer"
+                                                        /> 
+                                                    </button>
+                                                </div>
+
+                                                <div>
+                                                    <div className='flex items-center'>
+                                                        {appMode == 'playlist' && searchByUrl ? <>
+                                                            <div className='flex w-full items-center justify-between pt-5'>
+                                                                <div className='flex items-center gap-2'>
+                                                                    <img className="w-10 h-10 p-1 rounded-lg" src={(searchByUrl && searchByUrl.images) ? searchByUrl.images[0].url : ''} alt="Spotify playlist cover" />
+                                                                    <div>
+                                                                        <p className=''>{searchByUrl.name} ({searchByUrl.tracks.total})</p>
+                                                                        <p className='italic text-xs text-primary font-medium'>{searchByUrl.description}</p>
+                                                                    </div>
+                                                                </div>
+
+                                                                <button type="button" className="" onClick={() => startApp('playlist')}>
+                                                                    <ArrowForwardCircleOutline
+                                                                        color={'#FFF'}
+                                                                        height={'24px'}
+                                                                        width={'24px'}
+                                                                        className="cursor-pointer"
+                                                                    /> 
+                                                                </button>
+                                                            </div>
+                                                        </> : ''}
+                                                        {/*
+                                                            https://open.spotify.com/playlist/1B8UQSO6ecpMHFCoR5VNj7?si=2b3726abf9644fcb
+                                                            https://open.spotify.com/playlist/5aVDhBVT02Lz4fUUcsBD7v?si=58142092d67948ad 
+                                                        */}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </>
                             }
@@ -464,109 +672,33 @@ export async function getServerSideProps(context) {
     }
 
     try {
-        if(session.provider){
-            switch (session.provider) {
-                case 'deezer':
-                    // Get the 50 last recent saved tracks
-                    async function getDeezerPlaylist(url){
-                        return await fetchWebApi(url, 'GET');
-                    }
-                    const deezer_allPlaylists = await getDeezerPlaylist(`https://api.deezer.com/user/${session.accountId}/playlists`);
-                    if(deezer_allPlaylists.error){
-                        return {
-                            props : {
-                                connected: false,
-                            }
-                        }
-                    }
-
-                    const loved_playlist = deezer_allPlaylists.data.find((el) => el.is_loved_track == true);
-                    if(!loved_playlist){
-                        return {
-                            props : {
-                                tracks : [],
-                                total: 0,
-                                connected: true,
-                                provider: 'deezer'
-                            }
-                        }
-                    }
-                    // console.log(loved_playlist);
-
-                    async function getDeezerLovedTracks(url){
-                        return await fetchWebApi(url, 'GET');
-                    }
-                    const loved_tracks = await getDeezerLovedTracks(`https://api.deezer.com/playlist/${loved_playlist.id}/tracks`);
-                    if(loved_tracks.error){
-                        return {
-                            props : {
-                                tracks : [],
-                                total: 0,
-                                connected: true,
-                                provider: 'deezer'
-                            }
-                        }
-                    }
-
-                    return {
-                        props : {
-                            tracks : loved_tracks.data.map((track, index) => ({
-                                position: index + 1,
-                                id: track.id,
-                                uri: track.id,
-                                name: track.title,
-                                preview_url: track.preview,
-                                artists: Array.isArray(track.artist) ? track.artist.map(artist => artist.name).join(', ') : track.artist.name,
-                                cover: track.album.cover_big,
-                            })),
-                            total: loved_playlist.nb_tracks,
-                            loved_id: loved_playlist.id,
-                            connected: true,
-                            provider: 'deezer'
-                        }
-                    }
-                    break;
-            
-                case 'spotify':
-                    // Get the 50 last recent saved tracks
-                    async function getSpotifySavedTracks(url){
-                        return await fetchWebApi(url, 'GET');
-                    }
-                    const spotify_savedTracks = await getSpotifySavedTracks(`https://api.spotify.com/v1/me/tracks?offset=0&limit=${SPOTIFY_LIMIT}`);
-                    if(spotify_savedTracks.error){
-                        return {
-                            props : {
-                                connected: false,
-                            }
-                        }
-                    }
-
-                    return {
-                        props : {
-                            tracks : spotify_savedTracks.items.map(({ track }, index) => ({
-                                position: index + 1,
-                                id: track.id,
-                                uri: track.uri,
-                                name: track.name,
-                                preview_url: track.preview_url,
-                                artists: track.artists.map(artist => artist.name).join(', '),
-                                cover: track.album.images[0].url,
-                            })),
-                            total: spotify_savedTracks.total,
-                            connected: true,
-                            provider: 'spotify'
-                        }
-                    }
-                    break;
-        
-                default:
-                    break;
+        // Get the 50 last recent saved tracks
+        async function getSpotifySavedTracks(url){
+            return await fetchWebApi(url, 'GET');
+        }
+        const spotify_savedTracks = await getSpotifySavedTracks(`https://api.spotify.com/v1/me/tracks?offset=0&limit=${SPOTIFY_LIMIT}`);
+        if(spotify_savedTracks.error){
+            return {
+                props : {
+                    connected: false,
+                }
             }
         }
 
         return {
             props : {
-                connected: false,
+                tracks : spotify_savedTracks.items.map(({ track }, index) => ({
+                    position: index + 1,
+                    id: track.id,
+                    uri: track.uri,
+                    name: track.name,
+                    preview_url: track.preview_url,
+                    artists: track.artists.map(artist => artist.name).join(', '),
+                    cover: track.album.images[0].url,
+                })),
+                total: spotify_savedTracks.total,
+                connected: true,
+                provider: 'spotify'
             }
         }
         
