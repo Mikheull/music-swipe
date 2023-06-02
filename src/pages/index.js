@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { getSession, useSession, signIn, signOut } from "next-auth/react"
 import dynamic from "next/dynamic"
 import { PlayCircleOutline, PauseCircleOutline, MusicalNoteOutline, TrashOutline, AlbumsOutline, SearchOutline, ArrowForwardCircleOutline } from 'react-ionicons'
+import { toast } from 'react-toastify';
 
 const TinderCard = dynamic(() => import('../libs/react-tinder-card.js'), {
   ssr: false
@@ -24,6 +25,7 @@ export default function Home({connected, total, tracks, provider}) {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [isFinish, setIsFinish] = useState(false);
     const [started, setStarted] = useState(false);
     const [appMode, setAppMode] = useState(null);
     const [displayBgCover, setDisplayBgCover] = useState(null);
@@ -134,32 +136,36 @@ export default function Home({connected, total, tracks, provider}) {
             if(savedTracks.error){
                 console.log('error on load more');
             }else{
-                let _savedTracks = savedTracks.items.map(({ track }, index) => ({
-                    position: (index + 1) + ((currentPage == 2 ? 100 : 50 * currentPage)),
-                    id: track.id,
-                    uri: track.uri,
-                    name: track.name,
-                    preview_url: track.preview_url,
-                    artists: track.artists.map(artist => artist.name).join(', '),
-                    cover: track.album.images[0].url,
-                }));
+                if(savedTracks.items && savedTracks.items.length == 0){
+                    setIsPlaying(false);
+                    setIsFinish(true);
+                }else{
+                    let _savedTracks = savedTracks.items.map(({ track }, index) => ({
+                        position: (index + 1) + ((currentPage == 2 ? 100 : 50 * currentPage)),
+                        id: track.id,
+                        uri: track.uri,
+                        name: track.name,
+                        preview_url: track.preview_url,
+                        artists: track.artists.map(artist => artist.name).join(', '),
+                        cover: track.album.images[0].url,
+                    }));
+            
+                    setAllTracksPlaylist([...allTracksPlaylist, ..._savedTracks])
         
-                console.log(_savedTracks);
-                setAllTracksPlaylist([...allTracksPlaylist, ..._savedTracks])
-    
-                // Play preview
-                const track = [...allTracksPlaylist, ..._savedTracks][((currentPage == 2 ? 99 : 50 * currentPage))];
-    
-                if((track)){
-                    if(track && track.preview_url){
-                        console.log(track);
-                        document.getElementById('preview-music').setAttribute('src', track.preview_url);
-                        document.getElementById('preview-music').play();
+                    // Play preview
+                    const track = [...allTracksPlaylist, ..._savedTracks][((currentPage == 2 ? 100 : 50 * currentPage))];
+        
+                    if((track)){
+                        if(track && track.preview_url){
+                            document.getElementById('preview-music').setAttribute('src', track.preview_url);
+                            document.getElementById('preview-music').play();
+                        }
                     }
+        
+                    setIsPlaying(true);
+                    setCurrentPage(currentPage + 1)
                 }
-    
-                setIsPlaying(true);
-                setCurrentPage(currentPage + 1)
+                
             }
         }
     }
@@ -170,11 +176,29 @@ export default function Home({connected, total, tracks, provider}) {
         
         if(isPlaying){
             document.getElementById('preview-music').pause();
+            setIsPlaying(false);
         }else{
-            document.getElementById('preview-music').setAttribute('src', track.preview_url);
-            document.getElementById('preview-music').play();
+            if(track.preview_url){
+                document.getElementById('preview-music').setAttribute('src', track.preview_url);
+                document.getElementById('preview-music').play();
+                setIsPlaying(true);
+            }else{
+                document.getElementById('preview-music').pause();
+                setIsPlaying(false);
+
+                toast.warn('There\'s nothing to listen to here', {
+                    position: "top-center",
+                    autoClose: 2000,
+                    hideProgressBar: true,
+                    closeOnClick: true,
+                    pauseOnHover: false,
+                    draggable: true,
+                    progress: undefined,
+                    theme: "colored",
+                });
+            }
         }
-        setIsPlaying(!isPlaying);
+        
     }
 
     // Swiped functions
@@ -188,8 +212,11 @@ export default function Home({connected, total, tracks, provider}) {
             passed_arr.push(track.uri);
             setPassedTracks(passed_arr);
 
-            childRefs[track.position].current.parentNode.remove()
-            
+            // Pas de suite -> On check le load more
+            if(!next_track){
+                await loadMore();
+            }
+
             // On met à jour l'index pour la musique suivante
             updateCurrentIndex(track.position)
 
@@ -203,21 +230,31 @@ export default function Home({connected, total, tracks, provider}) {
             }
 
             // On joue la prochaine musique
-            console.log(track.position + 1, childRefs[track.position + 1].current);
-            if(next_track && next_track.preview_url && childRefs[track.position + 1].current){
+            if(next_track && next_track.preview_url){
                 document.getElementById('preview-music').setAttribute('src', next_track.preview_url);
                 document.getElementById('preview-music').play();
                 setIsPlaying(true);
             }else{
-                if(!childRefs[track.position + 1].current){
-                    await loadMore();
+                if(next_track && !next_track.preview_url){
+                    document.getElementById('preview-music').pause();
+                    setIsPlaying(false);
+
+                    toast.warn('There\'s nothing to listen to here', {
+                        position: "top-center",
+                        autoClose: 2000,
+                        hideProgressBar: true,
+                        closeOnClick: true,
+                        pauseOnHover: false,
+                        draggable: true,
+                        progress: undefined,
+                        theme: "colored",
+                    });
+                        
                 }
-                
-                document.getElementById('preview-music').pause();
             }
 
             // On clean le childRefs
-            childRefs.shift()
+            // childRefs.shift()
         }
     }
 
@@ -248,6 +285,32 @@ export default function Home({connected, total, tracks, provider}) {
             return false
         }
         const createdPlaylist = await createPrivatePlaylist(playlistTracks.map( e => e.uri ));
+        console.log(createdPlaylist);
+        if(createdPlaylist.error){
+            toast.error('There was a problem creating your playlist', {
+                position: "top-center",
+                autoClose: 2000,
+                hideProgressBar: true,
+                closeOnClick: true,
+                pauseOnHover: false,
+                draggable: true,
+                progress: undefined,
+                theme: "colored",
+            });
+        }else{
+            toast.success('Your playlist has been created', {
+                position: "top-center",
+                autoClose: 2000,
+                hideProgressBar: true,
+                closeOnClick: true,
+                pauseOnHover: false,
+                draggable: true,
+                progress: undefined,
+                theme: "colored",
+            });
+        }
+
+       
     }
     
     useEffect(() => {
@@ -269,75 +332,51 @@ export default function Home({connected, total, tracks, provider}) {
             const covers = shuffleArr(allTracks.map((track, index) => ({
                 cover: track.cover,
             })));
+            // const covers = allTracks.map((track, index) => ({
+            //     cover: track.cover,
+            // }));
 
             return (
                 <>
-                    <div className='bg-black w-full h-full absolute z-0 '>
+                    <div className='bg-gradient-to-b from-[#1E073B] to-primary-900 w-full h-full absolute z-0 '>
                         <div>
-                            <div className={`m-auto left-0 right-0 absolute -top-[40px] flex justify-center gap-24`}>
-                                <div data-cover-position="1" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[0].cover) ? covers[0].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
-                                <div data-cover-position="2" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[1].cover) ? covers[1].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                            <div className={`m-auto left-0 right-0 absolute -top-[4rem] flex justify-center gap-24`}>
+                                <div data-cover-position="1" className='opacity-50 bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[0].cover) ? covers[0].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="2" className='opacity-50 bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[1].cover) ? covers[1].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
                             </div>
                         
-                            <div className={`m-auto -left-[32px] top-[70px] absolute flex justify-center gap-24`}>
-                                <div data-cover-position="3" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[2].cover) ? covers[2].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
-                                <div data-cover-position="4" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[3].cover) ? covers[3].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
-                                <div data-cover-position="5" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[4].cover) ? covers[4].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                            <div className={`m-auto -left-[2rem] top-[4rem] absolute flex justify-center gap-24`}>
+                                <div data-cover-position="3" className='opacity-50 bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[2].cover) ? covers[2].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="4" className='opacity-50 bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[3].cover) ? covers[3].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="5" className='opacity-50 bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[4].cover) ? covers[4].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
                             </div>
                         </div>
 
                         <div>
-                            <div className={`m-auto left-0 right-0 absolute top-[180px] flex justify-center gap-24`}>
-                                <div data-cover-position="6" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[5].cover) ? covers[5].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
-                                <div data-cover-position="7" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[6].cover) ? covers[6].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                            <div className={`m-auto left-0 right-0 absolute top-[12rem] flex justify-center gap-24`}>
+                                <div data-cover-position="6" className='opacity-50 bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[5].cover) ? covers[5].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="7" className='opacity-50 bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[6].cover) ? covers[6].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
                             </div>
                         
-                            <div className={`m-auto -left-[32px] top-[290px] absolute flex justify-center gap-24`}>
-                                <div data-cover-position="8" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[7].cover) ? covers[7].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
-                                <div data-cover-position="9" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[8].cover) ? covers[8].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
-                                <div data-cover-position="10" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[9].cover) ? covers[9].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                            <div className={`m-auto -left-[2rem] top-[20rem] absolute flex justify-center gap-24`}>
+                                <div data-cover-position="8" className='opacity-50 bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[7].cover) ? covers[7].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="9" className='opacity-50 bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[8].cover) ? covers[8].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="10" className='opacity-50 bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[9].cover) ? covers[9].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
                             </div>
                         </div>
 
                         <div>
-                            <div className={`m-auto left-0 right-0 absolute -top-[400px] flex justify-center gap-24`}>
-                                <div data-cover-position="11" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[10].cover) ? covers[10].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
-                                <div data-cover-position="12" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[11].cover) ? covers[11].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                            <div className={`m-auto left-0 right-0 absolute top-[28rem] flex justify-center gap-24`}>
+                                <div data-cover-position="11" className='opacity-50 bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[10].cover) ? covers[10].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="12" className='opacity-50 bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[11].cover) ? covers[11].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
                             </div>
                         
-                            <div className={`m-auto -left-[32px] top-[510px] absolute flex justify-center gap-24`}>
-                                <div data-cover-position="13" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[12].cover) ? covers[12].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
-                                <div data-cover-position="14" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[13].cover) ? covers[13].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
-                                <div data-cover-position="15" className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[14].cover) ? covers[14].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                            <div className={`m-auto -left-[2rem] top-[36rem] absolute flex justify-center gap-24`}>
+                                <div data-cover-position="13" className='opacity-50 bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[12].cover) ? covers[12].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="14" className='opacity-50 bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[13].cover) ? covers[13].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
+                                <div data-cover-position="15" className='opacity-50 bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[14].cover) ? covers[14].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
                             </div>
                         </div>
-
-                        {/* {(() => {
-                            const options = [];
-
-                            let _start_top = -40;
-                            let pos = 0;
-                            for (let i = 1; i <= 3; i++) {
-                                options.push(
-                                    <div key={i}>
-                                        <div className={`m-auto left-0 right-0 absolute ${i == 1 ? '-top-[40px]' : `top-[${_start_top}px]`} flex justify-center gap-24`}>
-                                            <div data-cover-position={pos + 1} className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[pos].cover) ? covers[pos].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
-                                            <div data-cover-position={pos + 2} className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[pos + 1].cover) ? covers[pos + 1].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
-                                        </div>
-                                    
-                                        <div className={`m-auto -left-[32px] top-[${_start_top + 110}px] absolute flex justify-center gap-24`}>
-                                            <div data-cover-position={pos + 3} className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[pos + 2].cover) ? covers[pos + 2].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
-                                            <div data-cover-position={pos + 4} className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[pos + 3].cover) ? covers[pos + 3].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
-                                            <div data-cover-position={pos + 5} className='bg-cover bg-center h-32 w-32 rounded-full' style={{ backgroundImage: `url(${(covers[pos + 4].cover) ? covers[pos + 4].cover : covers[Math.floor(Math.random()*covers.length)].cover})`}}></div>
-                                        </div>
-                                    </div>
-                                );
-                                pos = pos + 5;
-                                _start_top = _start_top + 220;
-                            }
-
-                            return options;
-                        })()} */}
                         <div className="absolute bottom-0 w-full h-full flex justify-between px-6 pb-6 gradientback"></div>
                     </div>
                 </>
@@ -373,7 +412,6 @@ export default function Home({connected, total, tracks, provider}) {
                     cover: track.album.images[0].url,
                 }));
 
-                console.log(_allTracks);
                 setLoadedPlaylistId(processedUrl)
                 setAllTracksPlaylist([...allTracksPlaylist, ..._allTracks])
                 setNumberOfPagesPlaylist((founded_playlist && founded_playlist.tracks.total) ? Math.ceil(founded_playlist.tracks.total / 50) : 0);
@@ -396,13 +434,8 @@ export default function Home({connected, total, tracks, provider}) {
             <div className='absolute w-screen h-[calc(100dvh)] bg-primary-900'>
                 <div className="mx-auto max-w-lg bg-[#1E073B] h-full">
                     <div className='relative w-full h-[calc(100dvh)] overflow-hidden flex flex-col gap-2 items-center justify-center'>
-                        <AlbumsOutline
-                            color={'#FFF'}
-                            height={'48px'}
-                            width={'48px'}
-                        /> 
 
-                        <h1 className='text-center block font-semibold text-white text-3xl'>Create your ideal<br/> playlist</h1>
+                        <h1 className='text-center block font-semibold text-white text-5xl font-powergrotesk leading-snug'>Create your ideal<br/> playlist</h1>
                         <button onClick={() => signIn('spotify')} type="button" className="flex group gap-2 items-center justify-center mt-6 text-spotify hover:text-white border border-spotify hover:bg-spotify font-medium rounded-lg text-sm px-5 py-2.5 text-center">
                             <svg className='fill-spotify group-hover:fill-white' width="24" height="24" xmlns="http://www.w3.org/2000/svg" fillRule="evenodd" clipRule="evenodd"><path d="M19.098 10.638c-3.868-2.297-10.248-2.508-13.941-1.387-.593.18-1.22-.155-1.399-.748-.18-.593.154-1.22.748-1.4 4.239-1.287 11.285-1.038 15.738 1.605.533.317.708 1.005.392 1.538-.316.533-1.005.709-1.538.392zm-.126 3.403c-.272.44-.847.578-1.287.308-3.225-1.982-8.142-2.557-11.958-1.399-.494.15-1.017-.129-1.167-.623-.149-.495.13-1.016.624-1.167 4.358-1.322 9.776-.682 13.48 1.595.44.27.578.847.308 1.286zm-1.469 3.267c-.215.354-.676.465-1.028.249-2.818-1.722-6.365-2.111-10.542-1.157-.402.092-.803-.16-.895-.562-.092-.403.159-.804.562-.896 4.571-1.045 8.492-.595 11.655 1.338.353.215.464.676.248 1.028zm-5.503-17.308c-6.627 0-12 5.373-12 12 0 6.628 5.373 12 12 12 6.628 0 12-5.372 12-12 0-6.627-5.372-12-12-12z"/></svg>
                             Sign in with Spotify
@@ -420,7 +453,6 @@ export default function Home({connected, total, tracks, provider}) {
             <>
                 {/* Audio part */}
                 <audio id="preview-music" src="" preload="auto"></audio>
-
                 {/* Tracks part*/}
                 <div className="relative bg-yellow-400 h-[calc(100dvh)] w-screen inset-0 select-none" style={{ height: "-webkit-fill-available" }}>
                     <div className="mx-auto max-w-lg bg-[#1E073B] h-full">
@@ -464,8 +496,8 @@ export default function Home({connected, total, tracks, provider}) {
                                             <div className="relative w-full max-w-2xl max-h-full">
                                                 <div className="relative bg-white rounded-lg shadow">
                                                     <div className="flex items-center justify-between p-5 border-b rounded-t">
-                                                        <h3 className="text-xl font-medium text-gray-900">
-                                                            Create your playlist from {provider == 'spotify' ? 'Spotify' : 'Deezer'}
+                                                        <h3 className="text-xl font-medium text-gray-900 font-powergrotesk">
+                                                            Create your playlist from
                                                         </h3>
                                                         <button type="button" className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" data-modal-hide="playlistModal">
                                                             <svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"></path></svg>
@@ -474,22 +506,22 @@ export default function Home({connected, total, tracks, provider}) {
                                                     </div>
                                                     <div className="p-6 space-y-6">
                                                         <div className='bg-[#1E073B] overflow-scroll px-5 md:px-10 py-5 rounded-lg h-[55vh]'>
-                                                            <h2 className='text-lg font-bold'>{playlistName}</h2>
-                                                            <p className='text-sm text-primary'>Playlist created with music-swipe</p>
+                                                            <h2 className='text-lg font-bold font-powergrotesk'>{playlistName}</h2>
+                                                            <p className='text-sm text-primary font-powergrotesk'>Playlist created with music-swipe</p>
             
                                                             <div className='mt-5'>
                                                                 <ul className='flex flex-col gap-2'>
                                                                     {
                                                                         (playlistTracks.length == 0) ? 
-                                                                            <span className='italic text-xs text-gray-400'>It&apos;s too quiet I don&apos;t like it much</span>
+                                                                            <span className='italic text-xs text-gray-400 font-powergrotesk'>It&apos;s too quiet I don&apos;t like it much</span>
                                                                         :
                                                                             playlistTracks.map((item, index) => (
                                                                                 <li className='flex items-center justify-between' key={index + 1}>
                                                                                     <div className='flex items-center'>
-                                                                                        <span className='text-sm text-primary mr-4 font-bold'>{index + 1}</span>
+                                                                                        <span className='text-sm text-primary mr-4 font-bold font-powergrotesk'>{index + 1}</span>
                                                                                         <div className=''>
-                                                                                            <p className=''>{item.name}</p>
-                                                                                            <p className='italic text-sm text-primary font-medium'>{item.artists}</p>
+                                                                                            <p className='font-powergrotesk'>{item.name}</p>
+                                                                                            <p className='italic text-sm text-primary font-medium font-powergrotesk'>{item.artists}</p>
                                                                                         </div>
                                                                                     </div>
                                                                                     <div>
@@ -524,15 +556,15 @@ export default function Home({connected, total, tracks, provider}) {
                                 <>
                                     <div className='absolute w-full h-full flex items-center justify-center'>
                                         {
-                                            currentPage < numberOfPages ? <>
+                                            currentPage < numberOfPages && !isFinish ? <>
                                                 <div role="status">
                                                     <svg aria-hidden="true" className="w-8 h-8 mr-2 animate-spin text-primary-700 fill-primary-700" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                         <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
                                                         <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
                                                     </svg>
-                                                    <span className="sr-only">Loading...</span>
+                                                    <span className="sr-only font-powergrotesk">Loading...</span>
                                                 </div>
-                                            </> : <p className='text-primary-700'> You&apos;ve reached the end</p>
+                                            </> : <p className='text-primary-700 font-powergrotesk'> You&apos;ve reached the end</p>
                                         }
                                     </div>
         
@@ -547,11 +579,11 @@ export default function Home({connected, total, tracks, provider}) {
                                                 swipeRequirementType="position"
                                                 swipeThreshold={100}
                                             >
-                                                <div ref={childRefs[item.position]} className={`w-full h-full relative overflow-hidden bg-cover bg-center`} style={{ backgroundImage: `url(${item.cover})` }}>
+                                                <div ref={childRefs[item.position]} data-title={item.name} className={`w-full h-full relative overflow-hidden bg-cover bg-center`} style={{ backgroundImage: `url(${item.cover})` }}>
                                                     <div className="absolute bottom-0 w-full flex justify-between px-6 pb-6 pt-28 gradientback bg-white">
                                                         <div className="">
-                                                            <span className="block font-semibold text-primary-600 text-3xl">{item.name}</span>
-                                                            <span className="block italic text-lg font-medium">{item.artists}</span>
+                                                            <span className="block font-semibold text-primary-600 text-3xl font-powergrotesk">{item.name}</span>
+                                                            <span className="block italic text-lg font-medium font-powergrotesk">{item.artists}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -598,7 +630,7 @@ export default function Home({connected, total, tracks, provider}) {
 
                                             <div className="relative flex py-5 items-center w-full">
                                                 <div className="flex-grow border-t border-primary-400"></div>
-                                                <span className="flex-shrink mx-4 text-primary-400">OR</span>
+                                                <span className="flex-shrink mx-4 text-primary-400 font-powergrotesk">OR</span>
                                                 <div className="flex-grow border-t border-primary-400"></div>
                                             </div>
 
@@ -637,10 +669,6 @@ export default function Home({connected, total, tracks, provider}) {
                                                                 </button>
                                                             </div>
                                                         </> : ''}
-                                                        {/*
-                                                            https://open.spotify.com/playlist/1B8UQSO6ecpMHFCoR5VNj7?si=2b3726abf9644fcb
-                                                            https://open.spotify.com/playlist/5aVDhBVT02Lz4fUUcsBD7v?si=58142092d67948ad 
-                                                        */}
                                                     </div>
                                                 </div>
                                             </div>
