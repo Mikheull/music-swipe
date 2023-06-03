@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Geologica:wght@400;600&display=swap');
 @font-face {
   font-family: "PowerGrotesk";
   src: url("../../public/fonts/PowerGrotesk-Regular.ttf");

@@ -13,7 +13,8 @@ module.exports = {
         spotify: {  DEFAULT: '#1DBA54',  50: '#9FF0BB',  100: '#8DEDAF',  200: '#6AE896',  300: '#46E27D',  400: '#23DD64',  500: '#1DBA54',  600: '#15893E',  700: '#0E5928',  800: '#062812',  900: '#000000',  950: '#000000'},
       },
       fontFamily: {
-        'powergrotesk': ['PowerGrotesk', 'sans-serif']
+        'powergrotesk': ['PowerGrotesk', 'sans-serif'],
+        'geologica': ['Geologica', 'sans-serif'] 
       },
     },
   },
