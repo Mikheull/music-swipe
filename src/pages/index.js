@@ -14,19 +14,14 @@ const TinderCard = dynamic(() => import('../libs/react-tinder-card.js'), {
 });
 const SPOTIFY_LIMIT = 50;
 
-export default function Home({connected, total, tracks, provider}) {
+export default function Home({connected, pre_tracks}) {
     const [numberOfPages, setNumberOfPages] = useState(0);
     const [playlistTracks, setPlaylistTracks] = useState([]);
     const [passedTracks, setPassedTracks] = useState([]);
-    const [allTracks, setAllTracks] = useState((tracks) ? tracks : []);
+    const [allTracks, setAllTracks] = useState([]);
+    const [total, setTotal] = useState(0);
 
-    const [searchedId, setSearchedId] = useState(null);
     const [searchByUrl, setSearchByUrl] = useState(null);
-    const [loadedPlaylistId, setLoadedPlaylistId] = useState(null);
-    const [numberOfPagesPlaylist, setNumberOfPagesPlaylist] = useState(0);
-    const [allTracksPlaylist, setAllTracksPlaylist] = useState([]);
-    const [totalPlaylist, setTotalPlaylist] = useState(0);
-
     const [currentPage, setCurrentPage] = useState(1);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isFinish, setIsFinish] = useState(false);
@@ -41,8 +36,8 @@ export default function Home({connected, total, tracks, provider}) {
     const currentIndexRef = useRef(currentIndex)
     const childRefs = useMemo(
         () =>
-            ((appMode == 'saved_tracks') ? total : totalPlaylist) ? 
-                Array((appMode == 'saved_tracks') ? total : totalPlaylist)
+            total ? 
+                Array(total)
                     .fill(0)
                     .map((i) => React.createRef()) 
             : 
@@ -70,8 +65,66 @@ export default function Home({connected, total, tracks, provider}) {
         setStarted(true);
         setIsPlaying(true);
         setAppMode(mode);
+        
+        let _allTracks = [];
 
-        const track = (mode == 'saved_tracks') ? allTracks[0] : allTracksPlaylist[0];
+        // Si c'est en mode playlist
+        if(mode == 'playlist'){
+            async function search_playlist_by_id(){
+                return (await fetchWebApi(
+                    `v1/playlists/${searchByUrl.id}`, 'GET'
+                    ));
+            }
+
+            // Search playlist
+            const founded_playlist = await search_playlist_by_id();
+            if(founded_playlist.error){
+                console.log('erreur en start app');
+            }else{
+                _allTracks = founded_playlist.tracks.items.map(({ track }, index) => ({
+                    position: (index + 1),
+                    id: track.id,
+                    uri: track.uri,
+                    name: track.name,
+                    preview_url: track.preview_url,
+                    artists: track.artists.map(artist => artist.name).join(', '),
+                    cover: track.album.images[0].url,
+                }));
+
+                setAllTracks(_allTracks)
+                setNumberOfPages((founded_playlist && founded_playlist.tracks.total) ? Math.ceil(founded_playlist.tracks.total / SPOTIFY_LIMIT) : 0);
+                setTotal(founded_playlist.tracks.total)
+                setCurrentPage((founded_playlist.tracks.total <= SPOTIFY_LIMIT) ? 1 : 2);
+            }
+        }
+
+        // Si c'est en mode saved_tracks
+        if(mode == 'saved_tracks'){
+            async function getSpotifySavedTracks(url){
+                return await fetchWebApi(url, 'GET');
+            }
+            const spotify_savedTracks = await getSpotifySavedTracks(`v1/me/tracks?offset=0&limit=${SPOTIFY_LIMIT}`);
+            if(spotify_savedTracks.error){
+                console.log('erreur en start app');
+            }
+
+            _allTracks = spotify_savedTracks.items.map(({ track }, index) => ({
+                position: (index + 1),
+                id: track.id,
+                uri: track.uri,
+                name: track.name,
+                preview_url: track.preview_url,
+                artists: track.artists.map(artist => artist.name).join(', '),
+                cover: track.album.images[0].url,
+            }));
+
+            setAllTracks(_allTracks)
+            setNumberOfPages((spotify_savedTracks && spotify_savedTracks.total) ? Math.ceil(spotify_savedTracks.total / SPOTIFY_LIMIT) : 0);
+            setTotal(spotify_savedTracks.total)
+            setCurrentPage(1);
+        }
+
+        const track = _allTracks[0];
         if((track)){
             if(track && track.preview_url){
                 document.getElementById('preview-music').setAttribute('src', track.preview_url);
@@ -85,12 +138,9 @@ export default function Home({connected, total, tracks, provider}) {
     const loadMore = async () => {
         if(appMode == 'saved_tracks'){
             async function getSavedTracks(){
-                if(provider == 'spotify'){
-                    return (await fetchWebApi(
-                        `v1/me/tracks?market=FR&limit=${SPOTIFY_LIMIT}&offset=${SPOTIFY_LIMIT * currentPage}`, 'GET'
-                        ));
-                }
-                return []; 
+                return (await fetchWebApi(
+                    `v1/me/tracks?market=FR&limit=${SPOTIFY_LIMIT}&offset=${SPOTIFY_LIMIT * currentPage}`, 'GET'
+                    ));
             }
         
             const savedTracks = await getSavedTracks();
@@ -127,12 +177,9 @@ export default function Home({connected, total, tracks, provider}) {
 
         else if(appMode == 'playlist'){
             async function getPlaylistSavedTracks(){
-                if(provider == 'spotify'){
-                    return (await fetchWebApi(
-                        `v1/playlists/${loadedPlaylistId}/tracks?offset=${(50 * currentPage - 1) + 1}&limit=50`, 'GET'
-                        ));
-                }
-                return []; 
+                return (await fetchWebApi(
+                    `v1/playlists/${(searchByUrl) ? searchByUrl.id : ''}/tracks?offset=${(50 * currentPage - 1) + 1}&limit=50`, 'GET'
+                    ));
             }
         
             const savedTracks = await getPlaylistSavedTracks();
@@ -143,6 +190,7 @@ export default function Home({connected, total, tracks, provider}) {
                 if(savedTracks.items && savedTracks.items.length == 0){
                     setIsPlaying(false);
                     setIsFinish(true);
+                    document.getElementById('preview-music').pause();
                 }else{
                     let _savedTracks = savedTracks.items.map(({ track }, index) => ({
                         position: (index + 1) + ((currentPage == 2 ? 100 : 50 * currentPage)),
@@ -154,10 +202,10 @@ export default function Home({connected, total, tracks, provider}) {
                         cover: track.album.images[0].url,
                     }));
             
-                    setAllTracksPlaylist([...allTracksPlaylist, ..._savedTracks])
+                    setAllTracks([...allTracks, ..._savedTracks])
         
                     // Play preview
-                    const track = [...allTracksPlaylist, ..._savedTracks][((currentPage == 2 ? 100 : 50 * currentPage))];
+                    const track = [...allTracks, ..._savedTracks][((currentPage == 2 ? 100 : 50 * currentPage))];
         
                     if((track)){
                         if(track && track.preview_url){
@@ -176,13 +224,13 @@ export default function Home({connected, total, tracks, provider}) {
 
     // Play preview music
     const togglePreview = () => {
-        const track = (appMode == 'saved_tracks') ? allTracks[(currentIndex) ? currentIndex : 0] : allTracksPlaylist[(currentIndex) ? currentIndex : 0];
+        const track = allTracks[(currentIndex) ? currentIndex : 0];
         
         if(isPlaying){
             document.getElementById('preview-music').pause();
             setIsPlaying(false);
         }else{
-            if(track.preview_url){
+            if(track && track.preview_url){
                 document.getElementById('preview-music').setAttribute('src', track.preview_url);
                 document.getElementById('preview-music').play();
                 setIsPlaying(true);
@@ -207,8 +255,8 @@ export default function Home({connected, total, tracks, provider}) {
 
     // Swiped functions
     const swiped = async (direction, index) => {
-        const track = (appMode == 'saved_tracks') ? allTracks[index] : allTracksPlaylist[index];
-        const next_track = (appMode == 'saved_tracks') ? allTracks[index + 1] : allTracksPlaylist[index + 1];
+        const track = allTracks[index];
+        const next_track = allTracks[index + 1];
 
         if((track) && !passedTracks.includes(track.uri)){
             // On stock un tableau des musiques passées pour éviter les duplication
@@ -267,9 +315,7 @@ export default function Home({connected, total, tracks, provider}) {
         currentIndexRef.current = val
     }
 
-    
     useEffect(() => {
-        setNumberOfPages((allTracks && total) ? Math.ceil(total / SPOTIFY_LIMIT) : 0);
         setDisplayBgCover(displayCoverBackground());
     }, []);
 
@@ -283,8 +329,8 @@ export default function Home({connected, total, tracks, provider}) {
 
     // Display a random cover tracks in background
     const displayCoverBackground = () => {
-        if(allTracks && allTracks.length > 1){
-            const covers = shuffleArr(allTracks.map((track, index) => ({
+        if(pre_tracks && pre_tracks.length > 1){
+            const covers = shuffleArr(pre_tracks.map((track, index) => ({
                 cover: track.cover,
             })));
 
@@ -338,6 +384,7 @@ export default function Home({connected, total, tracks, provider}) {
 
     // Search a playlist from Url
     const searchPlaylist = async () => {
+        const searchedId = document.getElementById('search_playlist').value;
         if(searchedId){
             const regex = /^.*\/(playlist)\/|\?.*/;
             let processedUrl = searchedId.replace(regex, "");
@@ -354,21 +401,6 @@ export default function Home({connected, total, tracks, provider}) {
             if(founded_playlist.error){
                 setSearchByUrl(null)
             }else{
-                let _allTracks = founded_playlist.tracks.items.map(({ track }, index) => ({
-                    position: (index + 1),
-                    id: track.id,
-                    uri: track.uri,
-                    name: track.name,
-                    preview_url: track.preview_url,
-                    artists: track.artists.map(artist => artist.name).join(', '),
-                    cover: track.album.images[0].url,
-                }));
-
-                setLoadedPlaylistId(processedUrl)
-                setAllTracksPlaylist([...allTracksPlaylist, ..._allTracks])
-                setNumberOfPagesPlaylist((founded_playlist && founded_playlist.tracks.total) ? Math.ceil(founded_playlist.tracks.total / 50) : 0);
-                setCurrentPage(2)
-                setTotalPlaylist(founded_playlist.tracks.total)
                 setSearchByUrl(founded_playlist)
                 setAppMode('playlist')
             }
@@ -385,12 +417,10 @@ export default function Home({connected, total, tracks, provider}) {
 
     // Si l'user est connecté
     }else{
-        const list_tracks = (appMode == 'saved_tracks') ? allTracks : allTracksPlaylist
-
         return (
             <>
                 <Audio />
-
+            
                 {/* Tracks part*/}
                 <div className="relative bg-[#1E073B] h-[calc(100dvh)] w-screen inset-0 select-none" style={{ height: "-webkit-fill-available" }}>
                     <div className="mx-auto max-w-lg bg-[#1E073B] h-full">
@@ -415,8 +445,8 @@ export default function Home({connected, total, tracks, provider}) {
                                         isFinish={isFinish}
                                     />
         
-                                    {list_tracks ? 
-                                        list_tracks.map((item, index) => (
+                                    {allTracks ? 
+                                        allTracks.map((item, index) => (
                                             <TinderCard 
                                                 className={`swipe absolute m-auto left-0 right-0 w-full h-full`}
                                                 key={index}
@@ -483,7 +513,7 @@ export default function Home({connected, total, tracks, provider}) {
 
                                             <div>
                                                 <div className="flex">
-                                                    <input onChange={(e) => setSearchedId(e.target.value)} type="search" id="search_playlist" className="rounded-none rounded-l-lg bg-gray-50 border text-gray-900 focus:ring-blue-500 focus:border-blue-500 block flex-1 min-w-0 w-full text-sm border-gray-300 p-2.5" placeholder="Full URl or Spotify ID" />
+                                                    <input type="search" id="search_playlist" className="rounded-none rounded-l-lg bg-gray-50 border text-gray-900 focus:ring-blue-500 focus:border-blue-500 block flex-1 min-w-0 w-full text-sm border-gray-300 p-2.5" placeholder="Full URl or Spotify ID" />
                                                     <button onClick={(e) => searchPlaylist()} className="inline-flex items-center px-3 text-sm text-gray-900 bg-gray-200  rounded-r-lg">
                                                         <SearchOutline
                                                             color={'#000'}
@@ -562,7 +592,7 @@ export async function getServerSideProps(context) {
 
         return {
             props : {
-                tracks : spotify_savedTracks.items.map(({ track }, index) => ({
+                pre_tracks : spotify_savedTracks.items.map(({ track }, index) => ({
                     position: index + 1,
                     id: track.id,
                     uri: track.uri,
@@ -571,9 +601,7 @@ export async function getServerSideProps(context) {
                     artists: track.artists.map(artist => artist.name).join(', '),
                     cover: track.album.images[0].url,
                 })),
-                total: spotify_savedTracks.total,
                 connected: true,
-                provider: 'spotify'
             }
         }
         
