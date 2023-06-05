@@ -87,7 +87,7 @@ const AnimatedDiv = animated.div
 
 const TinderCard = React.forwardRef(
   (
-    { flickOnSwipe = true, children, onSwipe, onCardLeftScreen, className, zindex, preventSwipe = [], swipeRequirementType = 'velocity', swipeThreshold = settings.swipeThreshold, onSwipeRequirementFulfilled, onSwipeRequirementUnfulfilled },
+    { flickOnSwipe = true, children, onSwipe, onCardLeftScreen, className, id, zindex, preventSwipe = [], swipeRequirementType = 'velocity', swipeThreshold = settings.swipeThreshold, onSwipeRequirementFulfilled, onSwipeRequirementUnfulfilled },
     ref
   ) => {
     const [{ xyrot }, setSpringTarget] = useSpring(() => ({
@@ -248,6 +248,7 @@ const TinderCard = React.forwardRef(
       React.createElement(AnimatedDiv, {
         ref: element,
         className,
+        id,
         style: {
             zIndex: zindex,
             transform: xyrot.to((x, y, rot) => `translate3d(${x}px, ${y}px, ${0}px) rotate(${rot}deg)`)

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { getSession, useSession } from "next-auth/react"
 import dynamic from "next/dynamic"
-import { PlayCircleOutline, PauseCircleOutline, SearchOutline, ArrowForwardCircleOutline } from 'react-ionicons'
+import { PlayCircleOutline, PauseCircleOutline, ArrowForwardCircleOutline, RefreshOutline, CloseOutline, FlameOutline, HeartOutline } from 'react-ionicons'
 import { toast } from 'react-toastify';
 import { useDebouncedCallback } from 'use-debounce';
 
@@ -31,26 +31,6 @@ export default function Home({connected, pre_tracks}) {
     const [displayBgCover, setDisplayBgCover] = useState(null);
     const [playlistName, setPlaylistName] = useState('My Custom Playlist');
 
-    const debounced = useDebouncedCallback(
-      async (value) => {
-        async function search_playlist(){
-            return (await fetchWebApi(
-                `v1/search?q=${value}&type=playlist&limit=25`, 'GET'
-                ));
-        }
-
-        // Search playlist
-        const finded_playlist = await search_playlist();
-        if(finded_playlist.error){
-            setSearchResult(null)
-        }else{
-            setSearchResult(finded_playlist.playlists.items)
-        }
-      }, 300
-    );
-
-    
-
     const { data: session } = useSession()
 
     const [currentIndex, setCurrentIndex] = useState(0)
@@ -66,6 +46,25 @@ export default function Home({connected, pre_tracks}) {
         [started]
     )
 
+    const debounced = useDebouncedCallback(
+        async (value) => {
+          async function search_playlist(){
+              return (await fetchWebApi(
+                  `v1/search?q=${value}&type=playlist&limit=25`, 'GET'
+                  ));
+          }
+  
+          // Search playlist
+          const finded_playlist = await search_playlist();
+          if(finded_playlist.error){
+              setSearchResult(null)
+          }else{
+              setSearchResult(finded_playlist.playlists.items)
+          }
+        }, 300
+      );
+
+      
     /**
      * Method part
      */
@@ -151,7 +150,7 @@ export default function Home({connected, pre_tracks}) {
             if(track && track.preview_url){
                 document.getElementById('preview-music').setAttribute('src', track.preview_url);
                 document.getElementById('preview-music').play();
-                // document.getElementById('preview-music').volume = 0.05;
+                document.getElementById('preview-music').volume = 0.05;
             }
         }
     }
@@ -172,7 +171,7 @@ export default function Home({connected, pre_tracks}) {
         // Search playlist
         const finded_playlist = await search_playlist_by_id();
         if(finded_playlist.error){
-            console.log('erreur en start app');
+            console.log('erreur en continue app');
         }else{
             _allTracks = finded_playlist.tracks.items.map(({ track }, index) => ({
                 position: (index + 1),
@@ -323,7 +322,7 @@ export default function Home({connected, pre_tracks}) {
     }
 
     // Swiped functions
-    const swiped = async (direction, index) => {
+    const swiped = async (direction, index, mode = '') => {
         const track = allTracks[index];
         const next_track = allTracks[index + 1];
 
@@ -345,8 +344,17 @@ export default function Home({connected, pre_tracks}) {
             if(direction == "right"){
                 const arr = playlistTracks;
                 if(!arr.find((el) => el.uri == track.uri)){
-                    arr.push(track);
-                    setPlaylistTracks(arr);
+                    if(mode == 'superlike'){
+                        /**
+                         * TODO
+                         * Faire en sorte que l'item soit en première liste
+                         */
+                        arr.push(track);
+                        setPlaylistTracks(arr);
+                    }else{
+                        arr.push(track);
+                        setPlaylistTracks(arr);
+                    }
                 }
             }
 
@@ -379,6 +387,85 @@ export default function Home({connected, pre_tracks}) {
         }
     }
 
+    // Simulate a swipe
+    const swipe = async (dir, pos) => {
+        if(dir == 'left'){
+            if (document.getElementById(`tindercard-${pos}`)){
+                document.getElementById(`tindercard-${pos}`).style.transition = 'all 0.5s ease-out'
+                document.getElementById(`tindercard-${pos}`).style.transform = 'translate3d(-1572.43px, 79.6165px, 0px) rotate(-44.9424deg)'
+            }
+            swiped('left', pos - 1)
+        }
+        if(dir == 'right'){
+            if (document.getElementById(`tindercard-${pos}`)){
+                document.getElementById(`tindercard-${pos}`).style.transition = 'all 0.5s ease-out'
+                document.getElementById(`tindercard-${pos}`).style.transform = 'translate3d(1469.28px, 79.6165px, 0px) rotate(41.9943deg)'
+            }
+            swiped('right', pos - 1)
+        }
+    }
+    
+    // SuperLike add track on top of playlist
+    const superLike = async (pos) => {
+        if (document.getElementById(`tindercard-${pos}`)){
+            document.getElementById(`tindercard-${pos}`).style.transition = 'all 0.5s ease-out'
+            document.getElementById(`tindercard-${pos}`).style.transform = 'translate3d(1432.57px, -653.162px, 0px) rotate(40.945deg)'
+        }
+        swiped('right', pos - 1, 'superlike')
+    }
+
+    // Go back
+    const goBack = async (pos) => {
+        const track = allTracks[pos];
+        const prev_track = allTracks[pos - 1];
+
+        if(track && pos !== 0){
+
+            if (document.getElementById(`tindercard-${pos}`)){
+                document.getElementById(`tindercard-${pos}`).style.transform = ''
+                document.getElementById(`tindercard-${pos}`).style.transform = 'translate3d(0px, 0px, 0px) rotate(0deg);'
+                document.getElementById(`tindercard-${pos}`).style.transition = 'all 0.2s ease-out'
+            }
+
+            // On met à jour l'index
+            updateCurrentIndex(pos - 1)
+            
+            // On joue la musique précédente
+            if(prev_track && prev_track.preview_url){
+                document.getElementById('preview-music').setAttribute('src', prev_track.preview_url);
+                document.getElementById('preview-music').play();
+                setIsPlaying(true);
+            }else{
+                if(prev_track && !prev_track.preview_url){
+                    document.getElementById('preview-music').pause();
+                    setIsPlaying(false);
+
+                    toast.warn('There\'s nothing to listen to here', {
+                        position: "top-center",
+                        autoClose: 2000,
+                        hideProgressBar: true,
+                        closeOnClick: true,
+                        pauseOnHover: false,
+                        draggable: true,
+                        progress: undefined,
+                        theme: "colored",
+                    });
+                        
+                }
+            }
+        }
+
+        if(prev_track && prev_track.preview_url){
+            // On remove de passedTracks
+            const _passed_tracks = passedTracks.filter(function(el) { return el != prev_track.uri; }); 
+            setPassedTracks(_passed_tracks);
+
+            // On remove de playlisttracks
+            const _playlist_tracks = playlistTracks.filter(function(el) { return el.uri != prev_track.uri; }); 
+            setPlaylistTracks(_playlist_tracks);
+        }
+    }
+    
     const updateCurrentIndex = (val) => {
         setCurrentIndex(val)
         currentIndexRef.current = val
@@ -512,12 +599,48 @@ export default function Home({connected, pre_tracks}) {
                                                 preventSwipe={["up", "down"]}
                                                 swipeRequirementType="position"
                                                 swipeThreshold={100}
+                                                id={`tindercard-${item.position}`}
                                             >
                                                 <div ref={childRefs[item.position]} data-title={item.name} className={`w-full h-full relative overflow-hidden bg-cover bg-center`} style={{ backgroundImage: `url(${item.cover})` }}>
                                                     <div className="absolute bottom-0 w-full flex justify-between px-6 pb-6 pt-28 gradientback bg-white">
-                                                        <div className="">
-                                                            <span className="block font-semibold text-primary-600 text-3xl font-powergrotesk">{item.name}</span>
-                                                            <span className="block italic text-lg font-medium font-powergrotesk">{item.artists}</span>
+                                                        <div className="w-full">
+                                                            <div className='flex justify-between items-center w-full mb-4'>
+                                                                <div>
+                                                                    <button className="p-2 border rounded-full border-[#F8C449] hover:bg-[rgba(248,196,73,0.2)]" onClick={() => goBack(item.position - 1)} style={{transform: 'scaleX(-1)'}}>
+                                                                        <RefreshOutline
+                                                                            color={'#F8C449'}
+                                                                            height={'22px'}
+                                                                            width={'22px'}
+                                                                        />
+                                                                    </button>
+                                                                </div>
+                                                                <div className='flex gap-4 items-center'>
+                                                                    <button className="p-3 border rounded-full border-[#FD3075] hover:bg-[rgba(253,48,116,0.2)]" onClick={() => swipe('left', item.position)}>
+                                                                        <CloseOutline
+                                                                            color={'#FD3075'}
+                                                                            height={'22px'}
+                                                                            width={'22px'}
+                                                                        />
+                                                                    </button>
+                                                                    <button className="p-2 border rounded-full border-[#39B0FB] hover:bg-[rgba(57,177,251,0.2)]" onClick={() => superLike(item.position)}>
+                                                                        <FlameOutline
+                                                                            color={'#39B0FB'}
+                                                                            height={'22px'}
+                                                                            width={'22px'}
+                                                                        />
+                                                                    </button>
+                                                                    <button className="p-3 border rounded-full border-[#1AE6A9] hover:bg-[rgba(26,230,169,0.2)]" onClick={() => swipe('right', item.position)}>
+                                                                        <HeartOutline
+                                                                            color={'#1AE6A9'}
+                                                                            height={'22px'}
+                                                                            width={'22px'}
+                                                                        />
+                                                                    </button>
+                                                                </div>
+                                                                <div className='w-10'></div>
+                                                            </div>
+                                                            <span className="block font-semibold text-primary-600 text-3xl font-powergrotesk truncate">{item.name}</span>
+                                                            <span className="block italic text-lg font-medium font-powergrotesk truncate">{item.artists}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -574,11 +697,11 @@ export default function Home({connected, pre_tracks}) {
                                                         Search a playlist
                                                     </button>
 
-                                                    <div id="searchplaylist-modal" tabindex="-1" aria-hidden="true" className="fixed top-0 left-0 right-0 z-[99999] hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+                                                    <div id="searchplaylist-modal" tabIndex="-1" aria-hidden="true" className="fixed top-0 left-0 right-0 z-[99999] hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
                                                         <div className="relative w-full max-w-md max-h-full">
                                                             <div className="relative bg-white rounded-lg shadow dark:bg-gray-700">
                                                                 <button type="button" className="absolute top-3 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-800 dark:hover:text-white" data-modal-hide="searchplaylist-modal">
-                                                                    <svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                                                    <svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"></path></svg>
                                                                     <span className="sr-only">Close modal</span>
                                                                 </button>
                                                                 <div className="px-6 py-6 lg:px-8">
