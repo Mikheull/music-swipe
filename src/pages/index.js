@@ -43,7 +43,7 @@ export default function Home({connected, pre_tracks}) {
                     .map((i) => React.createRef()) 
             : 
                 0,
-        [started]
+        [total]
     )
 
     const debounced = useDebouncedCallback(
@@ -150,7 +150,7 @@ export default function Home({connected, pre_tracks}) {
             if(track && track.preview_url){
                 document.getElementById('preview-music').setAttribute('src', track.preview_url);
                 document.getElementById('preview-music').play();
-                document.getElementById('preview-music').volume = 0.05;
+                // document.getElementById('preview-music').volume = 0.05;
             }
         }
     }
