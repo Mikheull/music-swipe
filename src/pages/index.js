@@ -3,6 +3,7 @@ import { getSession, useSession } from "next-auth/react"
 import dynamic from "next/dynamic"
 import { PlayCircleOutline, PauseCircleOutline, SearchOutline, ArrowForwardCircleOutline } from 'react-ionicons'
 import { toast } from 'react-toastify';
+import { useDebouncedCallback } from 'use-debounce';
 
 import SignIn from '../components/SignIn';
 import Audio from '../components/Audio';
@@ -20,7 +21,8 @@ export default function Home({connected, pre_tracks}) {
     const [allTracks, setAllTracks] = useState([]);
     const [total, setTotal] = useState(0);
 
-    const [searchByUrl, setSearchByUrl] = useState(null);
+    const [searchResult, setSearchResult] = useState(null);
+    const [searchResultUsed, setSearchResultUsed] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isFinish, setIsFinish] = useState(false);
@@ -28,6 +30,26 @@ export default function Home({connected, pre_tracks}) {
     const [appMode, setAppMode] = useState(null);
     const [displayBgCover, setDisplayBgCover] = useState(null);
     const [playlistName, setPlaylistName] = useState('My Custom Playlist');
+
+    const debounced = useDebouncedCallback(
+      async (value) => {
+        async function search_playlist(){
+            return (await fetchWebApi(
+                `v1/search?q=${value}&type=playlist&limit=25`, 'GET'
+                ));
+        }
+
+        // Search playlist
+        const finded_playlist = await search_playlist();
+        if(finded_playlist.error){
+            setSearchResult(null)
+        }else{
+            setSearchResult(finded_playlist.playlists.items)
+        }
+      }, 300
+    );
+
+    
 
     const { data: session } = useSession()
 
@@ -60,7 +82,7 @@ export default function Home({connected, pre_tracks}) {
     }
 
     // Start the app
-    const startApp = async (mode) => {
+    const startApp = async (mode, id = '') => {
         setStarted(true);
         setIsPlaying(true);
         setAppMode(mode);
@@ -71,16 +93,16 @@ export default function Home({connected, pre_tracks}) {
         if(mode == 'playlist'){
             async function search_playlist_by_id(){
                 return (await fetchWebApi(
-                    `v1/playlists/${searchByUrl.id}`, 'GET'
+                    `v1/playlists/${id}`, 'GET'
                     ));
             }
 
             // Search playlist
-            const founded_playlist = await search_playlist_by_id();
-            if(founded_playlist.error){
+            const finded_playlist = await search_playlist_by_id();
+            if(finded_playlist.error){
                 console.log('erreur en start app');
             }else{
-                _allTracks = founded_playlist.tracks.items.map(({ track }, index) => ({
+                _allTracks = finded_playlist.tracks.items.map(({ track }, index) => ({
                     position: (index + 1),
                     id: track.id,
                     uri: track.uri,
@@ -90,10 +112,11 @@ export default function Home({connected, pre_tracks}) {
                     cover: track.album.images[0].url,
                 }));
 
+                setSearchResultUsed(id)
                 setAllTracks(_allTracks)
-                setNumberOfPages((founded_playlist && founded_playlist.tracks.total) ? Math.ceil(founded_playlist.tracks.total / SPOTIFY_LIMIT) : 0);
-                setTotal(founded_playlist.tracks.total)
-                setCurrentPage((founded_playlist.tracks.total <= SPOTIFY_LIMIT) ? 1 : 2);
+                setNumberOfPages((finded_playlist && finded_playlist.tracks.total) ? Math.ceil(finded_playlist.tracks.total / SPOTIFY_LIMIT) : 0);
+                setTotal(finded_playlist.tracks.total)
+                setCurrentPage((finded_playlist.tracks.total <= SPOTIFY_LIMIT) ? 1 : 2);
             }
         }
 
@@ -128,10 +151,57 @@ export default function Home({connected, pre_tracks}) {
             if(track && track.preview_url){
                 document.getElementById('preview-music').setAttribute('src', track.preview_url);
                 document.getElementById('preview-music').play();
+                // document.getElementById('preview-music').volume = 0.05;
+            }
+        }
+    }
+
+    // Continue the app with new playlist
+    const continueApp = async ( id = '') => {
+        setIsPlaying(true);
+        setAppMode('playlist');
+        
+        let _allTracks = [];
+
+        async function search_playlist_by_id(){
+            return (await fetchWebApi(
+                `v1/playlists/${id}`, 'GET'
+                ));
+        }
+
+        // Search playlist
+        const finded_playlist = await search_playlist_by_id();
+        if(finded_playlist.error){
+            console.log('erreur en start app');
+        }else{
+            _allTracks = finded_playlist.tracks.items.map(({ track }, index) => ({
+                position: (index + 1),
+                id: track.id,
+                uri: track.uri,
+                name: track.name,
+                preview_url: track.preview_url,
+                artists: track.artists.map(artist => artist.name).join(', '),
+                cover: track.album.images[0].url,
+            }));
+
+            setAllTracks([...allTracks, ..._allTracks])
+            console.log(_allTracks);
+
+            // setNumberOfPages((finded_playlist && finded_playlist.tracks.total) ? Math.ceil(finded_playlist.tracks.total / SPOTIFY_LIMIT) : 0);
+            // setTotal(finded_playlist.tracks.total)
+            // setCurrentPage((finded_playlist.tracks.total <= SPOTIFY_LIMIT) ? 1 : 2);
+        }
+
+        const track = _allTracks[0];
+        if((track)){
+            if(track && track.preview_url){
+                document.getElementById('preview-music').setAttribute('src', track.preview_url);
+                document.getElementById('preview-music').play();
                 document.getElementById('preview-music').volume = 0.05;
             }
         }
     }
+    
 
     // Load more music
     const loadMore = async () => {
@@ -177,7 +247,7 @@ export default function Home({connected, pre_tracks}) {
         else if(appMode == 'playlist'){
             async function getPlaylistSavedTracks(){
                 return (await fetchWebApi(
-                    `v1/playlists/${(searchByUrl) ? searchByUrl.id : ''}/tracks?offset=${(50 * currentPage - 1) + 1}&limit=50`, 'GET'
+                    `v1/playlists/${searchResultUsed}/tracks?offset=${(50 * currentPage - 1) + 1}&limit=50`, 'GET'
                     ));
             }
         
@@ -381,33 +451,6 @@ export default function Home({connected, pre_tracks}) {
         }
     }
 
-    // Search a playlist from Url
-    const searchPlaylist = async () => {
-        const searchedId = document.getElementById('search_playlist').value;
-        if(searchedId){
-            const regex = /^.*\/(playlist)\/|\?.*/;
-            let processedUrl = searchedId.replace(regex, "");
-            processedUrl = (processedUrl.includes("?")) ? processedUrl.substr(0, processedUrl.lastIndexOf("?")) : processedUrl;
-            
-            async function search_playlist_by_id(){
-                return (await fetchWebApi(
-                    `v1/playlists/${processedUrl}`, 'GET'
-                    ));
-            }
-
-            // Search playlist
-            const founded_playlist = await search_playlist_by_id();
-            if(founded_playlist.error){
-                setSearchByUrl(null)
-            }else{
-                setSearchByUrl(founded_playlist)
-                setAppMode('playlist')
-            }
-        }else{
-            setSearchByUrl(null)
-        }
-    }
-
     /**
      * Render part
      */
@@ -452,15 +495,11 @@ export default function Home({connected, pre_tracks}) {
                                             </> : <p className='text-primary-700 font-powergrotesk'> You&apos;ve reached the end</p>
                                         }
 
-                                        {
-                                            isFinish ? <>
-                                                <div>
-                                                    <button data-modal-target="playlistModal" data-modal-toggle="playlistModal" className={`${(!isFinish ? '' : 'hidden')} flex items-center bg-primary-600 rounded-full p-2`} type="button">
-                                                        Relancer une playlist
-                                                    </button>
-                                                </div>
-                                            </> : ''
-                                        }
+                                        <div className={`${(isFinish ? '' : 'hidden')} z-[99999]`}>
+                                            {/* <button data-modal-target="searchplaylist-modal" data-modal-toggle="searchplaylist-modal" className="underline decoration-primary font-powergrotesk" type="button">
+                                                Search a playlist
+                                            </button> */}
+                                        </div>
                                     </div>
         
                                     {allTracks ? 
@@ -530,41 +569,54 @@ export default function Home({connected, pre_tracks}) {
                                             </div>
 
                                             <div>
-                                                <div className="flex">
-                                                    <input type="search" id="search_playlist" className="rounded-none rounded-l-lg bg-gray-50 border text-gray-900 focus:ring-blue-500 focus:border-blue-500 block flex-1 min-w-0 w-full text-sm border-gray-300 p-2.5" placeholder="Full URl or Spotify ID" />
-                                                    <button onClick={(e) => searchPlaylist()} className="inline-flex items-center px-3 text-sm text-gray-900 bg-gray-200  rounded-r-lg">
-                                                        <SearchOutline
-                                                            color={'#000'}
-                                                            height={'16px'}
-                                                            width={'16px'}
-                                                            className="cursor-pointer"
-                                                        /> 
+                                                <div className=''>
+                                                    <button data-modal-target="searchplaylist-modal" data-modal-toggle="searchplaylist-modal" className="underline decoration-primary font-powergrotesk" type="button">
+                                                        Search a playlist
                                                     </button>
-                                                </div>
 
-                                                <div>
-                                                    <div className='flex items-center'>
-                                                        {appMode == 'playlist' && searchByUrl ? <>
-                                                            <div className='flex w-full items-center justify-between pt-5'>
-                                                                <div className='flex items-center gap-2'>
-                                                                    <img className="w-10 h-10 p-1 rounded-lg" src={(searchByUrl && searchByUrl.images) ? searchByUrl.images[0].url : ''} alt="Spotify playlist cover" />
+                                                    <div id="searchplaylist-modal" tabindex="-1" aria-hidden="true" className="fixed top-0 left-0 right-0 z-[99999] hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+                                                        <div className="relative w-full max-w-md max-h-full">
+                                                            <div className="relative bg-white rounded-lg shadow dark:bg-gray-700">
+                                                                <button type="button" className="absolute top-3 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-800 dark:hover:text-white" data-modal-hide="searchplaylist-modal">
+                                                                    <svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                                                    <span className="sr-only">Close modal</span>
+                                                                </button>
+                                                                <div className="px-6 py-6 lg:px-8">
+                                                                    <h3 className="mb-4 text-xl font-medium text-gray-900 dark:text-white">Search a playlist</h3>
+                                                                                                                                               
                                                                     <div>
-                                                                        <p className=''>{searchByUrl.name} ({searchByUrl.tracks.total})</p>
-                                                                        <p className='italic text-xs text-primary font-medium'>{searchByUrl.description}</p>
+                                                                        <input className='rounded-lg bg-gray-50 border text-gray-900 block flex-1 min-w-0 w-full text-sm border-gray-300 p-2.5' placeholder="Top 50 France" onChange={(e) => debounced(e.target.value)} />
+                                                                        {
+                                                                            (searchResult && searchResult.length !== 0) ? 
+                                                                                <div className='overflow-scroll h-[55vh] mt-6'>
+                                                                                {searchResult.map((item, index) => (
+                                                                                    <div key={index} className='flex items-center justify-between mb-2'>
+                                                                                        <div className='flex gap-2'>
+                                                                                            <img className="w-16 h-16 p-1 rounded-lg" src={(item.images) ? item.images[0].url : ''} alt="Spotify playlist cover" />
+                                                                                            <div>
+                                                                                                <p className='text-xs text-gray-800'>{item.name} ({item.tracks.total})</p>
+                                                                                                <p className='italic text-xs text-primary font-medium'>Par - {item.owner.display_name}</p>
+                                                                                            </div>
+                                                                                        </div>
+
+                                                                                        <button type="button" className="" onClick={() => (!started) ? startApp('playlist', item.id) : continueApp(item.id) }>
+                                                                                            <ArrowForwardCircleOutline
+                                                                                                color={'#000'}
+                                                                                                height={'24px'}
+                                                                                                width={'24px'}
+                                                                                                className="cursor-pointer"
+                                                                                            /> 
+                                                                                        </button>
+                                                                                    </div>
+                                                                                ))}
+                                                                                </div> 
+                                                                            : <p className='mt-6 text-primary text-sm'>Aucun résultats</p>
+                                                                        }
                                                                     </div>
                                                                 </div>
-
-                                                                <button type="button" className="" onClick={() => startApp('playlist')}>
-                                                                    <ArrowForwardCircleOutline
-                                                                        color={'#FFF'}
-                                                                        height={'24px'}
-                                                                        width={'24px'}
-                                                                        className="cursor-pointer"
-                                                                    /> 
-                                                                </button>
                                                             </div>
-                                                        </> : ''}
-                                                    </div>
+                                                        </div>
+                                                    </div> 
                                                 </div>
                                             </div>
                                         </div>
