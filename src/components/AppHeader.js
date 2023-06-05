@@ -1,31 +1,29 @@
 import React from 'react'
 import { Dropdown } from 'flowbite-react';
-import { MusicalNoteOutline, TrashOutline } from 'react-ionicons'
+import { LogIn, MusicalNoteOutline, TrashOutline } from 'react-ionicons'
 import { signOut } from "next-auth/react"
 import { toast } from 'react-toastify';
+// import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
-const AppHeader = ({fetchWebApi, session, started, playlistTracks, playlistName, setPlaylistName, setPassedTracks}) => {
+const AppHeader = ({fetchWebApi, session, started, playlistTracks, playlistName, setPlaylistName, setPassedTracks, setPlaylistTracks}) => {
 
     // Create the playlist
     const createPlaylist = async () => {
         async function createPrivatePlaylist(tracksUri){
-            if(provider == 'spotify'){
-                const playlist = await fetchWebApi(
-                    `v1/users/${session.accountId}/playlists`, 'POST', {
-                    "name": playlistName,
-                    "description": "Playlist created with music-swipe",
-                    "public": false
-                })
-                
-                await fetchWebApi(
-                    `v1/playlists/${playlist.id}/tracks?uris=${tracksUri.join(',')}`,
-                    'POST'
-                );
-                
-                return playlist;
-            }
-
-            return false
+            const playlist = await fetchWebApi(
+                `v1/users/${session.accountId}/playlists`, 'POST', {
+                "name": playlistName,
+                "description": "Playlist created with music-swipe",
+                "public": false
+            })
+            
+            await fetchWebApi(
+                `v1/playlists/${playlist.id}/tracks?uris=${tracksUri.join(',')}`,
+                'POST'
+            );
+            
+            return playlist;
         }
         const createdPlaylist = await createPrivatePlaylist(playlistTracks.map( e => e.uri ));
 
@@ -52,8 +50,35 @@ const AppHeader = ({fetchWebApi, session, started, playlistTracks, playlistName,
                 theme: "colored",
             });
         }
+    }
 
-       
+
+    // a little function to help us with reordering the result
+    const reorder = (list, startIndex, endIndex) => {
+        const result = Array.from(list);
+        const [removed] = result.splice(startIndex, 1);
+        result.splice(endIndex, 0, removed);
+
+        for (let index = 1; index <= result.length; index++) {
+            result[index - 1].position = index
+        }
+
+        return result;
+    };
+
+
+    const onDragEnd = async (result) => {
+        // dropped outside the list
+        if (!result.destination) {
+          return;
+        }
+    
+        const items = reorder(
+            playlistTracks,
+          result.source.index,
+          result.destination.index
+        );
+        setPlaylistTracks(items)
     }
 
     return (
@@ -108,34 +133,53 @@ const AppHeader = ({fetchWebApi, session, started, playlistTracks, playlistName,
                                         <h2 className='text-lg font-bold font-powergrotesk'>{playlistName}</h2>
                                         <p className='text-sm text-primary font-powergrotesk'>Playlist created with music-swipe</p>
 
-                                        <div className='mt-5'>
-                                            <ul className='flex flex-col gap-2'>
-                                                {
-                                                    (playlistTracks.length == 0) ? 
-                                                        <span className='italic text-xs text-gray-400 font-powergrotesk'>It&apos;s too quiet I don&apos;t like it much</span>
-                                                    :
-                                                        playlistTracks.map((item, index) => (
-                                                            <li className='flex items-center justify-between' key={index + 1}>
-                                                                <div className='flex items-center'>
-                                                                    <span className='text-sm text-primary mr-4 font-bold font-powergrotesk'>{index + 1}</span>
-                                                                    <div className=''>
-                                                                        <p className='font-powergrotesk'>{item.name}</p>
-                                                                        <p className='italic text-sm text-primary font-medium font-powergrotesk'>{item.artists}</p>
+                                        <div className='mt-5 flex flex-col gap-2'>
+                                            {
+                                                (playlistTracks.length == 0) ? 
+                                                    <span className='italic text-xs text-gray-400 font-powergrotesk'>It&apos;s too quiet I don&apos;t like it much</span>
+                                                :
+                                                <DragDropContext onDragEnd={onDragEnd} >
+                                                    <Droppable droppableId="droppable">
+                                                    {(provided, snapshot) => (
+                                                        <div
+                                                        {...provided.droppableProps}
+                                                        ref={provided.innerRef}
+                                                        >
+                                                        {playlistTracks.sort((p1, p2) => (p1.position > p2.position) ? 1 : (p1.position < p2.position) ? -1 : 0).map((item, index) => (
+                                                            <Draggable key={item.id} draggableId={item.id} index={index}>
+                                                            {(provided, snapshot) => (
+                                                                <div
+                                                                className='flex items-center justify-between mb-2'
+                                                                ref={provided.innerRef}
+                                                                {...provided.draggableProps}
+                                                                {...provided.dragHandleProps}
+                                                                >
+                                                                    <div className='flex items-center'>
+                                                                        <span className='text-sm text-primary mr-4 font-bold font-powergrotesk'>{index + 1}</span>
+                                                                        <div className=''>
+                                                                            <p className='font-powergrotesk'>{item.name}</p>
+                                                                            <p className='italic text-sm text-primary font-medium font-powergrotesk'>{item.artists}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <TrashOutline
+                                                                            color={'#FFF'}
+                                                                            height={'16px'}
+                                                                            width={'16px'}
+                                                                            className="cursor-pointer"
+                                                                            onClick={() => setPassedTracks(playlistTracks.splice(index, 1))}
+                                                                        /> 
                                                                     </div>
                                                                 </div>
-                                                                <div>
-                                                                    <TrashOutline
-                                                                        color={'#FFF'}
-                                                                        height={'16px'}
-                                                                        width={'16px'}
-                                                                        className="cursor-pointer"
-                                                                        onClick={() => setPassedTracks(playlistTracks.splice(index, 1))}
-                                                                    /> 
-                                                                </div>
-                                                            </li>
-                                                        ))
-                                                }
-                                            </ul>
+                                                            )}
+                                                            </Draggable>
+                                                        ))}
+                                                        {provided.placeholder}
+                                                        </div>
+                                                    )}
+                                                    </Droppable>
+                                                </DragDropContext>
+                                            }
                                         </div>
                                     </div>
                                 </div>

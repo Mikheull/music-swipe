@@ -10,6 +10,7 @@
     "ngrok": "ngrok http 3000"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^16.2.0",
     "@react-spring/web": "^9.7.2",
     "autoprefixer": "10.4.14",
     "eslint": "8.41.0",
@@ -22,6 +23,7 @@
     "npm": "^9.6.7",
     "postcss": "8.4.23",
     "react": "18.2.0",
+    "react-beautiful-dnd": "^13.1.1",
     "react-dom": "18.2.0",
     "react-ionicons": "^4.2.0",
     "react-tinder-card": "^1.6.2",
