@@ -15,6 +15,7 @@ export default function App({
             <title>Music Swipe</title>
             <meta name="description" content="" />
             <meta name="theme-color" content="#1E073B" />
+            <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         </Head>
         <ToastContainer />
         <Component {...pageProps} />
