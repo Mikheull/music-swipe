@@ -35,17 +35,6 @@ export default function Home({connected, pre_tracks}) {
     const { data: session } = useSession()
 
     const [currentIndex, setCurrentIndex] = useState(0)
-    const currentIndexRef = useRef(currentIndex)
-    const childRefs = useMemo(
-        () =>
-            total ? 
-                Array(total)
-                    .fill(0)
-                    .map((i) => React.createRef()) 
-            : 
-                0,
-        [total]
-    )
 
     const debounced = useDebouncedCallback(
         async (value) => {
@@ -159,13 +148,22 @@ export default function Home({connected, pre_tracks}) {
     const continueApp = async ( id = '') => {
         setIsPlaying(true);
         setAppMode('playlist');
+        setIsFinish(false);
+        updateCurrentIndex(0);
+
+        var elems = document.querySelectorAll('.tindercard');
+        var index = 0, length = elems.length;
+        for ( ; index < length; index++) {
+            elems[index].style.transition = "";
+            elems[index].style.transform = "translate3d(0px, 0px, 0px) rotate(0deg)";
+        }
         
         let _allTracks = [];
 
         async function search_playlist_by_id(){
             return (await fetchWebApi(
                 `v1/playlists/${id}`, 'GET'
-                ));
+            ));
         }
 
         // Search playlist
@@ -183,20 +181,19 @@ export default function Home({connected, pre_tracks}) {
                 cover: track.album.images[0].url,
             }));
 
-            setAllTracks([...allTracks, ..._allTracks])
-            console.log(_allTracks);
-
-            // setNumberOfPages((finded_playlist && finded_playlist.tracks.total) ? Math.ceil(finded_playlist.tracks.total / SPOTIFY_LIMIT) : 0);
-            // setTotal(finded_playlist.tracks.total)
-            // setCurrentPage((finded_playlist.tracks.total <= SPOTIFY_LIMIT) ? 1 : 2);
-        }
+            setSearchResultUsed(id)
+            setAllTracks(_allTracks)
+            setNumberOfPages((finded_playlist && finded_playlist.tracks.total) ? Math.ceil(finded_playlist.tracks.total / SPOTIFY_LIMIT) : 0);
+            setTotal(finded_playlist.tracks.total)
+            setCurrentPage((finded_playlist.tracks.total <= SPOTIFY_LIMIT) ? 1 : 2);
+    }
 
         const track = _allTracks[0];
         if((track)){
             if(track && track.preview_url){
                 document.getElementById('preview-music').setAttribute('src', track.preview_url);
                 document.getElementById('preview-music').play();
-                document.getElementById('preview-music').volume = 0.05;
+                // document.getElementById('preview-music').volume = 0.05;
             }
         }
     }
@@ -326,19 +323,14 @@ export default function Home({connected, pre_tracks}) {
         const track = allTracks[index];
         const next_track = allTracks[index + 1];
 
+        // On met à jour l'index pour la musique suivante
+        updateCurrentIndex((track) ? track.position : currentIndex)
+        
         if((track) && !passedTracks.includes(track.uri)){
             // On stock un tableau des musiques passées pour éviter les duplication
             const passed_arr = passedTracks;
             passed_arr.push(track.uri);
             setPassedTracks(passed_arr);
-
-            // Pas de suite -> On check le load more
-            if(!next_track){
-                await loadMore();
-            }
-
-            // On met à jour l'index pour la musique suivante
-            updateCurrentIndex(track.position)
 
             // If liked
             if(direction == "right"){
@@ -354,33 +346,35 @@ export default function Home({connected, pre_tracks}) {
                     }
                 }
             }
+        }
 
-            // On joue la prochaine musique
-            if(next_track && next_track.preview_url){
-                document.getElementById('preview-music').setAttribute('src', next_track.preview_url);
-                document.getElementById('preview-music').play();
-                setIsPlaying(true);
-            }else{
-                if(next_track && !next_track.preview_url){
-                    document.getElementById('preview-music').pause();
-                    setIsPlaying(false);
+        // Pas de suite -> On check le load more
+        if(!next_track){
+            await loadMore();
+        }
+        
+        // On joue la prochaine musique
+        if(next_track && next_track.preview_url){
+            document.getElementById('preview-music').setAttribute('src', next_track.preview_url);
+            document.getElementById('preview-music').play();
+            setIsPlaying(true);
+        }else{
+            if(next_track && !next_track.preview_url){
+                document.getElementById('preview-music').pause();
+                setIsPlaying(false);
 
-                    toast.warn('There\'s nothing to listen to here', {
-                        position: "top-center",
-                        autoClose: 2000,
-                        hideProgressBar: true,
-                        closeOnClick: true,
-                        pauseOnHover: false,
-                        draggable: true,
-                        progress: undefined,
-                        theme: "colored",
-                    });
-                        
-                }
+                toast.warn('There\'s nothing to listen to here', {
+                    position: "top-center",
+                    autoClose: 2000,
+                    hideProgressBar: true,
+                    closeOnClick: true,
+                    pauseOnHover: false,
+                    draggable: true,
+                    progress: undefined,
+                    theme: "colored",
+                });
+                    
             }
-
-            // On clean le childRefs
-            // childRefs.shift()
         }
     }
 
@@ -467,7 +461,6 @@ export default function Home({connected, pre_tracks}) {
     
     const updateCurrentIndex = (val) => {
         setCurrentIndex(val)
-        currentIndexRef.current = val
     }
 
     useEffect(() => {
@@ -570,6 +563,8 @@ export default function Home({connected, pre_tracks}) {
         return (
             <>
                 <Audio />
+                {JSON.stringify(currentIndex)}
+
                 {/* Tracks part*/}
                 <div className="relative bg-[#1E073B] h-[calc(100dvh)] w-screen inset-0 select-none" style={{ height: "-webkit-fill-available" }}>
                     <div className="mx-auto max-w-lg bg-[#1E073B] h-full">
@@ -587,185 +582,183 @@ export default function Home({connected, pre_tracks}) {
                                 setPlaylistTracks={setPlaylistTracks}
                             />
         
-                            {started ? 
-                                <>
-                                    <div className='absolute w-full h-full flex items-center justify-center'>
-                                        {
-                                            currentPage < numberOfPages && !isFinish ? <>
-                                                <div role="status">
-                                                    <svg aria-hidden="true" className="w-8 h-8 mr-2 animate-spin text-primary-700 fill-primary-700" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                        <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
-                                                        <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
-                                                    </svg>
-                                                    <span className="sr-only font-powergrotesk">Loading...</span>
-                                                </div>
-                                            </> : <p className='text-primary-700 font-powergrotesk'> You&apos;ve reached the end</p>
-                                        }
+                            {/* App Screen */}
+                            <div className={`${!started ? 'hidden' : '' } z-[99994]`}>
+                                <div className='absolute w-full h-full flex items-center justify-center'>
+                                    {
+                                        currentPage < numberOfPages && !isFinish ? <>
+                                            <div role="status">
+                                                <svg aria-hidden="true" className="w-8 h-8 mr-2 animate-spin text-primary-700 fill-primary-700" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
+                                                    <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
+                                                </svg>
+                                                <span className="sr-only font-powergrotesk">Loading...</span>
+                                            </div>
+                                        </> : <p className='text-primary-700 font-powergrotesk'> You&apos;ve reached the end</p>
+                                    }
 
-                                        <div className={`${(isFinish ? '' : 'hidden')} z-[9999]`}>
-                                            {/* <button data-modal-target="searchplaylist-modal" data-modal-toggle="searchplaylist-modal" className="underline decoration-primary font-powergrotesk" type="button">
-                                                Search a playlist
-                                            </button> */}
-                                        </div>
+                                    <div className={`${(isFinish ? '' : 'hidden')} z-[99994]`}>
+                                        <button data-modal-target="searchplaylistModal" data-modal-toggle="searchplaylistModal" className="underline decoration-primary font-powergrotesk" type="button">
+                                            Search a playlist
+                                        </button>
                                     </div>
-        
-                                    {allTracks ? 
-                                        allTracks.map((item, index) => (
-                                            <TinderCard 
-                                                className={`swipe absolute m-auto left-0 right-0 w-full h-full`}
-                                                key={index}
-                                                onSwipe={(dir) => swiped(dir, index)} 
-                                                zindex={total - index}
-                                                preventSwipe={["up", "down"]}
-                                                swipeRequirementType="position"
-                                                swipeThreshold={100}
-                                                id={`tindercard-${item.position}`}
-                                            >
-                                                <div ref={childRefs[item.position]} data-title={item.name} className={`w-full h-full relative overflow-hidden bg-cover bg-center`} style={{ backgroundImage: `url(${item.cover})` }}>
-                                                    <div className="absolute bottom-0 w-full flex justify-between px-6 pb-6 pt-28 gradientback bg-white">
-                                                        <div className="w-full">
-                                                            <div className='flex justify-between items-center w-full mb-4'>
-                                                                <div>
-                                                                    <button className="pressable p-2 border rounded-full border-[#F8C449] hover:bg-[rgba(248,196,73,0.2)]" onClick={() => goBack(item.position - 1)}>
-                                                                        <RefreshOutline
-                                                                            color={'#F8C449'}
-                                                                            height={'22px'}
-                                                                            width={'22px'}
-                                                                        />
-                                                                    </button>
-                                                                </div>
-                                                                <div className='flex gap-4 items-center'>
-                                                                    <button className="pressable p-3 border rounded-full border-[#FD3075] hover:bg-[rgba(253,48,116,0.2)]" onClick={() => swipe('left', item.position)}>
-                                                                        <CloseOutline
-                                                                            color={'#FD3075'}
-                                                                            height={'22px'}
-                                                                            width={'22px'}
-                                                                        />
-                                                                    </button>
-                                                                    <button className="pressable p-2 border rounded-full border-[#39B0FB] hover:bg-[rgba(57,177,251,0.2)]" onClick={() => superLike(item.position)}>
-                                                                        <FlameOutline
-                                                                            color={'#39B0FB'}
-                                                                            height={'22px'}
-                                                                            width={'22px'}
-                                                                        />
-                                                                    </button>
-                                                                    <button className="pressable p-3 border rounded-full border-[#1AE6A9] hover:bg-[rgba(26,230,169,0.2)]" onClick={() => swipe('right', item.position)}>
-                                                                        <HeartOutline
-                                                                            color={'#1AE6A9'}
-                                                                            height={'22px'}
-                                                                            width={'22px'}
-                                                                        />
-                                                                    </button>
-                                                                </div>
-                                                                <div className='w-10'></div>
+                                </div>
+    
+                                {allTracks ? 
+                                    allTracks.map((item, index) => (
+                                        <TinderCard 
+                                            className={`swipe absolute m-auto left-0 right-0 w-full h-full tindercard`}
+                                            key={index}
+                                            onSwipe={(dir) => swiped(dir, index)} 
+                                            zindex={total - index}
+                                            preventSwipe={["up", "down"]}
+                                            swipeRequirementType="position"
+                                            swipeThreshold={100}
+                                            id={`tindercard-${item.position}`}
+                                        >
+                                            <div className={`w-full h-full relative overflow-hidden bg-cover bg-center`} style={{ backgroundImage: `url(${item.cover})` }}>
+                                                <div className="absolute bottom-0 w-full flex justify-between px-6 pb-6 pt-28 gradientback bg-white">
+                                                    <div className="w-full">
+                                                        <div className='flex justify-between items-center w-full mb-4'>
+                                                            <div>
+                                                                <button className="pressable p-2 border rounded-full border-[#F8C449] hover:bg-[rgba(248,196,73,0.2)]" onClick={() => goBack(item.position - 1)}>
+                                                                    <RefreshOutline
+                                                                        color={'#F8C449'}
+                                                                        height={'22px'}
+                                                                        width={'22px'}
+                                                                    />
+                                                                </button>
                                                             </div>
-                                                            <span className="block font-semibold text-primary-600 text-3xl font-powergrotesk truncate">{item.name}</span>
-                                                            <span className="block italic text-lg font-medium font-powergrotesk truncate">{item.artists}</span>
+                                                            <div className='flex gap-4 items-center'>
+                                                                <button className="pressable p-3 border rounded-full border-[#FD3075] hover:bg-[rgba(253,48,116,0.2)]" onClick={() => swipe('left', item.position)}>
+                                                                    <CloseOutline
+                                                                        color={'#FD3075'}
+                                                                        height={'22px'}
+                                                                        width={'22px'}
+                                                                    />
+                                                                </button>
+                                                                <button className="pressable p-2 border rounded-full border-[#39B0FB] hover:bg-[rgba(57,177,251,0.2)]" onClick={() => superLike(item.position)}>
+                                                                    <FlameOutline
+                                                                        color={'#39B0FB'}
+                                                                        height={'22px'}
+                                                                        width={'22px'}
+                                                                    />
+                                                                </button>
+                                                                <button className="pressable p-3 border rounded-full border-[#1AE6A9] hover:bg-[rgba(26,230,169,0.2)]" onClick={() => swipe('right', item.position)}>
+                                                                    <HeartOutline
+                                                                        color={'#1AE6A9'}
+                                                                        height={'22px'}
+                                                                        width={'22px'}
+                                                                    />
+                                                                </button>
+                                                            </div>
+                                                            <div className='w-10'></div>
                                                         </div>
+                                                        <span className="block font-semibold text-primary-600 text-3xl font-powergrotesk truncate">{item.name}</span>
+                                                        <span className="block italic text-lg font-medium font-powergrotesk truncate">{item.artists}</span>
                                                     </div>
                                                 </div>
-                                            </TinderCard>
-                                        ))
-                                    :
-                                        <>No favorite music</>
-                                    }
-        
-                                    {/* Play button */}
-                                    {( SPOTIFY_LIMIT * currentPage !== currentIndex) ? 
-                                        <div className='absolute z-[99998] w-100 w-full bottom-0'>
-                                            <div className='flex justify-between px-6 pb-6 mt-4'>
-                                                <div></div>
-                                                <button className="pressable p-0" onClick={() => togglePreview()}>
-                                                    {!isPlaying ? 
-                                                        <PlayCircleOutline
-                                                            color={'#FFF'}
-                                                            height={'32px'}
-                                                            width={'32px'}
-                                                        />
-                                                    :
-                                                        <PauseCircleOutline
-                                                            color={'#FFF'}
-                                                            height={'32px'}
-                                                            width={'32px'}
-                                                        />
-                                                    }
-                                                </button>
                                             </div>
-                                        </div>
-                                    :  ''}
-                                    
-                                </>
-                            : 
-                                <>
-                                    <div className='flex w-full h-full items-center justify-center bg-white relative'>
-                                        {displayBgCover}
-
-                                        <div className='z-[9999] w-3/4'>
-                                            <button onClick={() => startApp('saved_tracks')} type="button" className="mx-auto flex group gap-2 items-center justify-center mt-6 text-black hover:text-spotify hover:bg-white bg-spotify font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-                                                Continue with saved tracks
+                                        </TinderCard>
+                                    ))
+                                :
+                                    <>No favorite music</>
+                                }
+    
+                                {/* Play button */}
+                                {( SPOTIFY_LIMIT * currentPage !== currentIndex) ? 
+                                    <div className='absolute z-[99995] w-100 w-full bottom-0'>
+                                        <div className='flex justify-between px-6 pb-6 mt-4'>
+                                            <div></div>
+                                            <button className="pressable p-0" onClick={() => togglePreview()}>
+                                                {!isPlaying ? 
+                                                    <PlayCircleOutline
+                                                        color={'#FFF'}
+                                                        height={'32px'}
+                                                        width={'32px'}
+                                                    />
+                                                :
+                                                    <PauseCircleOutline
+                                                        color={'#FFF'}
+                                                        height={'32px'}
+                                                        width={'32px'}
+                                                    />
+                                                }
                                             </button>
+                                        </div>
+                                    </div>
+                                :  ''}
+                            </div>
 
-                                            <div className="relative flex py-5 items-center w-full">
-                                                <div className="flex-grow border-t border-primary-400"></div>
-                                                <span className="flex-shrink mx-4 text-primary-400 font-powergrotesk">OR</span>
-                                                <div className="flex-grow border-t border-primary-400"></div>
-                                            </div>
+                            {/* Start Screen */}
+                            <div className={`${!started ? '' : 'hidden' } flex w-full h-full items-center justify-center bg-white relative`}>
+                                {displayBgCover}
 
+                                <div className='z-[99998] w-3/4'>
+                                    <button onClick={() => startApp('saved_tracks')} type="button" className="mx-auto flex group gap-2 items-center justify-center mt-6 text-black hover:text-spotify hover:bg-white bg-spotify font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                                        Continue with saved tracks
+                                    </button>
+
+                                    <div className="relative flex py-5 items-center w-full">
+                                        <div className="flex-grow border-t border-primary-400"></div>
+                                        <span className="flex-shrink mx-4 text-primary-400 font-powergrotesk">OR</span>
+                                        <div className="flex-grow border-t border-primary-400"></div>
+                                    </div>
+
+                                    <div>
+                                        <div className=''>
+                                            <button data-modal-target="searchplaylistModal" data-modal-toggle="searchplaylistModal" className="underline decoration-primary font-powergrotesk" type="button">
+                                                Search a playlist
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Modal */}
+                            <div id="searchplaylistModal" tabIndex="-1" aria-hidden="true" className="fixed top-0 left-0 right-0 z-[99999] hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
+                                <div className="relative w-full max-w-md max-h-full">
+                                    <div className="relative bg-white rounded-lg shadow dark:bg-gray-700">
+                                        <button type="button" className="absolute top-3 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-800 dark:hover:text-white" data-modal-hide="searchplaylistModal">
+                                            <svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"></path></svg>
+                                            <span className="sr-only">Close modal</span>
+                                        </button>
+                                        <div className="px-6 py-6 lg:px-8">
+                                            <h3 className="mb-4 text-xl font-medium text-gray-900 dark:text-white">Search a playlist</h3>
+                                                                                                                        
                                             <div>
-                                                <div className=''>
-                                                    <button data-modal-target="searchplaylist-modal" data-modal-toggle="searchplaylist-modal" className="underline decoration-primary font-powergrotesk" type="button">
-                                                        Search a playlist
-                                                    </button>
-
-                                                    <div id="searchplaylist-modal" tabIndex="-1" aria-hidden="true" className="fixed top-0 left-0 right-0 z-[99999] hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
-                                                        <div className="relative w-full max-w-md max-h-full">
-                                                            <div className="relative bg-white rounded-lg shadow dark:bg-gray-700">
-                                                                <button type="button" className="absolute top-3 right-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center dark:hover:bg-gray-800 dark:hover:text-white" data-modal-hide="searchplaylist-modal">
-                                                                    <svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"></path></svg>
-                                                                    <span className="sr-only">Close modal</span>
-                                                                </button>
-                                                                <div className="px-6 py-6 lg:px-8">
-                                                                    <h3 className="mb-4 text-xl font-medium text-gray-900 dark:text-white">Search a playlist</h3>
-                                                                                                                                               
+                                                <input className='rounded-lg bg-gray-50 border text-gray-900 block flex-1 min-w-0 w-full text-sm border-gray-300 p-2.5' placeholder="Top 50 France" onChange={(e) => debounced(e.target.value)} />
+                                                {
+                                                    (searchResult && searchResult.length !== 0) ? 
+                                                        <div className='overflow-scroll h-[55vh] mt-6'>
+                                                        {searchResult.map((item, index) => (
+                                                            <div key={index} className='flex items-center justify-between mb-2'>
+                                                                <div className='flex gap-2'>
+                                                                    <img className="w-16 h-16 p-1 rounded-lg" src={(item.images) ? item.images[0].url : ''} alt="Spotify playlist cover" />
                                                                     <div>
-                                                                        <input className='rounded-lg bg-gray-50 border text-gray-900 block flex-1 min-w-0 w-full text-sm border-gray-300 p-2.5' placeholder="Top 50 France" onChange={(e) => debounced(e.target.value)} />
-                                                                        {
-                                                                            (searchResult && searchResult.length !== 0) ? 
-                                                                                <div className='overflow-scroll h-[55vh] mt-6'>
-                                                                                {searchResult.map((item, index) => (
-                                                                                    <div key={index} className='flex items-center justify-between mb-2'>
-                                                                                        <div className='flex gap-2'>
-                                                                                            <img className="w-16 h-16 p-1 rounded-lg" src={(item.images) ? item.images[0].url : ''} alt="Spotify playlist cover" />
-                                                                                            <div>
-                                                                                                <p className='text-xs text-gray-800'>{item.name} ({item.tracks.total})</p>
-                                                                                                <p className='italic text-xs text-primary font-medium'>Par - {item.owner.display_name}</p>
-                                                                                            </div>
-                                                                                        </div>
-
-                                                                                        <button type="button" className="" onClick={() => (!started) ? startApp('playlist', item.id) : continueApp(item.id) }>
-                                                                                            <ArrowForwardCircleOutline
-                                                                                                color={'#000'}
-                                                                                                height={'24px'}
-                                                                                                width={'24px'}
-                                                                                                className="cursor-pointer"
-                                                                                            /> 
-                                                                                        </button>
-                                                                                    </div>
-                                                                                ))}
-                                                                                </div> 
-                                                                            : <p className='mt-6 text-primary text-sm'>Aucun résultats</p>
-                                                                        }
+                                                                        <p className='text-xs text-gray-800'>{item.name} ({item.tracks.total})</p>
+                                                                        <p className='italic text-xs text-primary font-medium'>Par - {item.owner.display_name}</p>
                                                                     </div>
                                                                 </div>
+
+                                                                <button type="button" data-modal-hide="searchplaylistModal" onClick={() => (!started) ? startApp('playlist', item.id) : continueApp(item.id) }>
+                                                                    <ArrowForwardCircleOutline
+                                                                        color={'#000'}
+                                                                        height={'24px'}
+                                                                        width={'24px'}
+                                                                        className="cursor-pointer"
+                                                                    /> 
+                                                                </button>
                                                             </div>
-                                                        </div>
-                                                    </div> 
-                                                </div>
+                                                        ))}
+                                                        </div> 
+                                                    : <p className='mt-6 text-primary text-sm'>Aucun résultats</p>
+                                                }
                                             </div>
                                         </div>
                                     </div>
-                                </>
-                            }
+                                </div>
+                            </div> 
                         </div>
                     </div>
                 </div>
