@@ -563,7 +563,6 @@ export default function Home({connected, pre_tracks}) {
         return (
             <>
                 <Audio />
-                {JSON.stringify(currentIndex)}
 
                 {/* Tracks part*/}
                 <div className="relative bg-[#1E073B] h-[calc(100dvh)] w-screen inset-0 select-none" style={{ height: "-webkit-fill-available" }}>
