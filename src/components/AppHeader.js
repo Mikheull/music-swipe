@@ -59,10 +59,6 @@ const AppHeader = ({fetchWebApi, session, started, playlistTracks, playlistName,
         const [removed] = result.splice(startIndex, 1);
         result.splice(endIndex, 0, removed);
 
-        for (let index = 1; index <= result.length; index++) {
-            result[index - 1].position = index
-        }
-
         return result;
     };
 
@@ -154,7 +150,7 @@ const AppHeader = ({fetchWebApi, session, started, playlistTracks, playlistName,
                                                         {...provided.droppableProps}
                                                         ref={provided.innerRef}
                                                         >
-                                                        {playlistTracks.sort((p1, p2) => (p1.position > p2.position) ? 1 : (p1.position < p2.position) ? -1 : 0).map((item, index) => (
+                                                        {playlistTracks.map((item, index) => (
                                                             <Draggable key={item.id} draggableId={item.id} index={index}>
                                                             {(provided, snapshot) => (
                                                                 <div

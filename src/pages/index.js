@@ -342,14 +342,11 @@ export default function Home({connected, pre_tracks}) {
 
             // If liked
             if(direction == "right"){
-                const arr = playlistTracks;
+                let arr = playlistTracks;
                 if(!arr.find((el) => el.uri == track.uri)){
                     if(mode == 'superlike'){
-                        /**
-                         * TODO
-                         * Faire en sorte que l'item soit en première liste
-                         */
                         arr.push(track);
+                        arr.unshift(arr.pop());
                         setPlaylistTracks(arr);
                     }else{
                         arr.push(track);
