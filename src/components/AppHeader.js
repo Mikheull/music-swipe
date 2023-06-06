@@ -84,7 +84,7 @@ const AppHeader = ({fetchWebApi, session, started, playlistTracks, playlistName,
     return (
         <div className='absolute z-[99999] w-100 w-full'>
             <div className='flex justify-between px-6 pb-6 mt-4'>
-                <div>
+                <div className='pressable'>
                     <Dropdown
                         inline
                         label={
@@ -98,8 +98,8 @@ const AppHeader = ({fetchWebApi, session, started, playlistTracks, playlistName,
                             </span>
                         </Dropdown.Header>
                         
-                        <Dropdown.Item className='text-black'>
-                            <a href="">Reload</a>
+                        <Dropdown.Item className='text-black' onClick={() => window.location.reload(false)}>
+                            Reload
                         </Dropdown.Item>
                         <Dropdown.Item className='text-black'>
                             <button data-modal-target="shortcutsModal" data-modal-toggle="shortcutsModal" className="" type="button">
@@ -114,7 +114,7 @@ const AppHeader = ({fetchWebApi, session, started, playlistTracks, playlistName,
                 </div>
                 <div>
                     <div className={`${(started ? '' : 'hidden')} relative`}>
-                        <button data-modal-target="playlistModal" data-modal-toggle="playlistModal" className="flex items-center bg-primary-600 rounded-full p-2" type="button">
+                        <button data-modal-target="playlistModal" data-modal-toggle="playlistModal" className="pressable flex items-center bg-primary-600 rounded-full p-2" type="button">
                             <MusicalNoteOutline
                                 color={'#FFF'}
                                 height={'32px'}
@@ -212,7 +212,7 @@ const AppHeader = ({fetchWebApi, session, started, playlistTracks, playlistName,
                                         </h3>
                                         <p className='text-sm text-primary font-powergrotesk mt'>Hyper speeeeed</p>
                                     </div>
-                                    <button type="button" className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" data-modal-hide="playlistModal">
+                                    <button type="button" className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" data-modal-hide="shortcutsModal">
                                         <svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"></path></svg>
                                         <span className="sr-only">Close modal</span>
                                     </button>
@@ -305,7 +305,7 @@ const AppHeader = ({fetchWebApi, session, started, playlistTracks, playlistName,
                                     </div>
                                 </div>
                                 <div className="flex items-center p-6 space-x-2 border-t border-gray-200 rounded-b">
-                                    <button data-modal-hide="playlistModal" type="button" className="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10">Close</button>
+                                    <button data-modal-hide="shortcutsModal" type="button" className="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-gray-200 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10">Close</button>
                                 </div>
                             </div>
                         </div>

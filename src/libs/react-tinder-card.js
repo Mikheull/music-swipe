@@ -174,9 +174,9 @@ const TinderCard = React.forwardRef(
       let isClicking = false
 
       element.current.addEventListener(('touchstart'), (ev) => {
-        if (!ev.srcElement.className.includes('pressable') && ev.cancelable) {
-          ev.preventDefault()
-        }
+        // if (!ev.srcElement.className.includes('pressable') && ev.cancelable) {
+        //   ev.preventDefault()
+        // }
 
         const gestureState = gestureStateFromWebEvent(ev, startPositon, lastPosition, true)
         lastPosition = gestureState

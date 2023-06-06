@@ -629,7 +629,7 @@ export default function Home({connected, pre_tracks}) {
                                                         <div className="w-full">
                                                             <div className='flex justify-between items-center w-full mb-4'>
                                                                 <div>
-                                                                    <button className="p-2 border rounded-full border-[#F8C449] hover:bg-[rgba(248,196,73,0.2)] flip" onClick={() => goBack(item.position - 1)}>
+                                                                    <button className="pressable p-2 border rounded-full border-[#F8C449] hover:bg-[rgba(248,196,73,0.2)]" onClick={() => goBack(item.position - 1)}>
                                                                         <RefreshOutline
                                                                             color={'#F8C449'}
                                                                             height={'22px'}
@@ -638,21 +638,21 @@ export default function Home({connected, pre_tracks}) {
                                                                     </button>
                                                                 </div>
                                                                 <div className='flex gap-4 items-center'>
-                                                                    <button className="p-3 border rounded-full border-[#FD3075] hover:bg-[rgba(253,48,116,0.2)]" onClick={() => swipe('left', item.position)}>
+                                                                    <button className="pressable p-3 border rounded-full border-[#FD3075] hover:bg-[rgba(253,48,116,0.2)]" onClick={() => swipe('left', item.position)}>
                                                                         <CloseOutline
                                                                             color={'#FD3075'}
                                                                             height={'22px'}
                                                                             width={'22px'}
                                                                         />
                                                                     </button>
-                                                                    <button className="p-2 border rounded-full border-[#39B0FB] hover:bg-[rgba(57,177,251,0.2)]" onClick={() => superLike(item.position)}>
+                                                                    <button className="pressable p-2 border rounded-full border-[#39B0FB] hover:bg-[rgba(57,177,251,0.2)]" onClick={() => superLike(item.position)}>
                                                                         <FlameOutline
                                                                             color={'#39B0FB'}
                                                                             height={'22px'}
                                                                             width={'22px'}
                                                                         />
                                                                     </button>
-                                                                    <button className="p-3 border rounded-full border-[#1AE6A9] hover:bg-[rgba(26,230,169,0.2)]" onClick={() => swipe('right', item.position)}>
+                                                                    <button className="pressable p-3 border rounded-full border-[#1AE6A9] hover:bg-[rgba(26,230,169,0.2)]" onClick={() => swipe('right', item.position)}>
                                                                         <HeartOutline
                                                                             color={'#1AE6A9'}
                                                                             height={'22px'}
@@ -678,7 +678,7 @@ export default function Home({connected, pre_tracks}) {
                                         <div className='absolute z-[99998] w-100 w-full bottom-0'>
                                             <div className='flex justify-between px-6 pb-6 mt-4'>
                                                 <div></div>
-                                                <button className="p-0" onClick={() => togglePreview()}>
+                                                <button className="pressable p-0" onClick={() => togglePreview()}>
                                                     {!isPlaying ? 
                                                         <PlayCircleOutline
                                                             color={'#FFF'}
