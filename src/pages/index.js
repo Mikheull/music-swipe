@@ -4,6 +4,7 @@ import dynamic from "next/dynamic"
 import { PlayCircleOutline, PauseCircleOutline, ArrowForwardCircleOutline, RefreshOutline, CloseOutline, FlameOutline, HeartOutline } from 'react-ionicons'
 import { toast } from 'react-toastify';
 import { useDebouncedCallback } from 'use-debounce';
+import useKeypress from 'react-use-keypress';
 
 import SignIn from '../components/SignIn';
 import Audio from '../components/Audio';
@@ -62,8 +63,7 @@ export default function Home({connected, pre_tracks}) {
               setSearchResult(finded_playlist.playlists.items)
           }
         }, 300
-      );
-
+    );
       
     /**
      * Method part
@@ -389,17 +389,19 @@ export default function Home({connected, pre_tracks}) {
 
     // Simulate a swipe
     const swipe = async (dir, pos) => {
+        const y = Math.floor(Math.random() * (600 - -600 + 1)) + -600;
+
         if(dir == 'left'){
             if (document.getElementById(`tindercard-${pos}`)){
                 document.getElementById(`tindercard-${pos}`).style.transition = 'all 0.5s ease-out'
-                document.getElementById(`tindercard-${pos}`).style.transform = 'translate3d(-1572.43px, 79.6165px, 0px) rotate(-44.9424deg)'
+                document.getElementById(`tindercard-${pos}`).style.transform = `translate3d(-1572.43px, ${y}px, 0px) rotate(-44.9424deg)`
             }
             swiped('left', pos - 1)
         }
         if(dir == 'right'){
             if (document.getElementById(`tindercard-${pos}`)){
                 document.getElementById(`tindercard-${pos}`).style.transition = 'all 0.5s ease-out'
-                document.getElementById(`tindercard-${pos}`).style.transform = 'translate3d(1469.28px, 79.6165px, 0px) rotate(41.9943deg)'
+                document.getElementById(`tindercard-${pos}`).style.transform = `translate3d(1469.28px, ${y}px, 0px) rotate(41.9943deg)`
             }
             swiped('right', pos - 1)
         }
@@ -538,6 +540,28 @@ export default function Home({connected, pre_tracks}) {
         }
     }
 
+
+    // Keyboard part
+    useKeypress([' ', 'p', 'k', 'b', 'd', 'l', 's', 'ArrowRight', 'ArrowLeft'], (event) => {
+        if(started){
+            if (event.key === ' ') {
+                togglePreview()
+            } else if (event.key === 'p') {
+                console.log('P');
+            } else if (event.key === 'k') {
+                console.log('k');
+            } else if (event.key === 'b') {
+                goBack(currentIndex)
+            } else if (event.key === 'd' || event.key === 'ArrowLeft') {
+                swipe('left', currentIndex + 1)
+            } else if (event.key === 'l' || event.key === 'ArrowRight') {
+                swipe('right', currentIndex + 1)
+            } else if (event.key === 's') {
+                superLike(currentIndex + 1)
+            }
+        }
+    });
+    
     /**
      * Render part
      */
@@ -549,7 +573,6 @@ export default function Home({connected, pre_tracks}) {
         return (
             <>
                 <Audio />
-            
                 {/* Tracks part*/}
                 <div className="relative bg-[#1E073B] h-[calc(100dvh)] w-screen inset-0 select-none" style={{ height: "-webkit-fill-available" }}>
                     <div className="mx-auto max-w-lg bg-[#1E073B] h-full">
@@ -582,7 +605,7 @@ export default function Home({connected, pre_tracks}) {
                                             </> : <p className='text-primary-700 font-powergrotesk'> You&apos;ve reached the end</p>
                                         }
 
-                                        <div className={`${(isFinish ? '' : 'hidden')} z-[99999]`}>
+                                        <div className={`${(isFinish ? '' : 'hidden')} z-[9999]`}>
                                             {/* <button data-modal-target="searchplaylist-modal" data-modal-toggle="searchplaylist-modal" className="underline decoration-primary font-powergrotesk" type="button">
                                                 Search a playlist
                                             </button> */}
@@ -680,7 +703,7 @@ export default function Home({connected, pre_tracks}) {
                                     <div className='flex w-full h-full items-center justify-center bg-white relative'>
                                         {displayBgCover}
 
-                                        <div className='z-[99999] w-3/4'>
+                                        <div className='z-[9999] w-3/4'>
                                             <button onClick={() => startApp('saved_tracks')} type="button" className="mx-auto flex group gap-2 items-center justify-center mt-6 text-black hover:text-spotify hover:bg-white bg-spotify font-medium rounded-lg text-sm px-5 py-2.5 text-center">
                                                 Continue with saved tracks
                                             </button>
