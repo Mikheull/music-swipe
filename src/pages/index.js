@@ -629,7 +629,7 @@ export default function Home({connected, pre_tracks}) {
                                                         <div className="w-full">
                                                             <div className='flex justify-between items-center w-full mb-4'>
                                                                 <div>
-                                                                    <button className="p-2 border rounded-full border-[#F8C449] hover:bg-[rgba(248,196,73,0.2)]" onClick={() => goBack(item.position - 1)} style={{transform: 'scaleX(-1)'}}>
+                                                                    <button className="p-2 border rounded-full border-[#F8C449] hover:bg-[rgba(248,196,73,0.2)] flip" onClick={() => goBack(item.position - 1)}>
                                                                         <RefreshOutline
                                                                             color={'#F8C449'}
                                                                             height={'22px'}
