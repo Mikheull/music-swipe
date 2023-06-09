@@ -202,7 +202,7 @@ const StartScreen = () => {
             if(track && track.preview_url){
                 document.getElementById('preview-music').setAttribute('src', track.preview_url);
                 document.getElementById('preview-music').play();
-                document.getElementById('preview-music').volume = 0.05;
+                // document.getElementById('preview-music').volume = 0.05;
             }
         }
 
@@ -258,7 +258,7 @@ const StartScreen = () => {
             if(track && track.preview_url){
                 document.getElementById('preview-music').setAttribute('src', track.preview_url);
                 document.getElementById('preview-music').play();
-                document.getElementById('preview-music').volume = 0.05;
+                // document.getElementById('preview-music').volume = 0.05;
             }
         }
     }

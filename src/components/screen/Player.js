@@ -72,7 +72,7 @@ const PlayerScreen = () => {
         if(track && track.preview_url){
             document.getElementById('preview-music').setAttribute('src', track.preview_url);
             document.getElementById('preview-music').play();
-            document.getElementById('preview-music').volume = 0.05;
+            // document.getElementById('preview-music').volume = 0.05;
             dispatch(setIsPlaying(true));
         }else{
             if(track && !track.preview_url){

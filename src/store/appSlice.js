@@ -1,7 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit"
 
-import { HYDRATE } from "next-redux-wrapper"
-
 const initialState = {
   isStarted: false,
   isFinish: false,
@@ -89,29 +87,6 @@ export const appSlice = createSlice({
     },
     setNameOfPlaylist: (state, action) => {
       state.nameOfPlaylist = action.payload
-    }
-  },
-
-  extraReducers: {
-    [HYDRATE]: (state, action) => {
-      return {
-        ...state,
-        ...action.payload.isStarted,
-        ...action.payload.isFinish,
-        ...action.payload.isPlaying,
-        ...action.payload.appMode,
-        ...action.payload.preTracks,
-        ...action.payload.trackslist,
-        ...action.payload.passedTracks,
-        ...action.payload.selectedTracks,
-        ...action.payload.searchResult,
-        ...action.payload.searchResultUsed,
-        ...action.payload.numberOfPage,
-        ...action.payload.total,
-        ...action.payload.currentPage,
-        ...action.payload.currentIndex,
-        ...action.payload.nameOfPlaylist
-      }
     }
   }
 })
