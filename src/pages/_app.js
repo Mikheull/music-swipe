@@ -4,13 +4,15 @@ import Head from "next/head";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
 
-export default function App({
-  Component,
-  pageProps: { session, ...pageProps },
-}) {
+import { wrapper } from "../store/store";
+import { useStore, Provider } from "react-redux";
+
+function App({ Component, pageProps: { session, ...pageProps } }) {
+  const store = useStore()
+
   return (
-    <>
-      <SessionProvider session={session}>
+    <SessionProvider session={session}>
+      <Provider store={store}>
         <Head>
             <title>Music Swipe</title>
             <meta name="description" content="" />
@@ -19,8 +21,10 @@ export default function App({
         </Head>
         <ToastContainer />
         <Component {...pageProps} />
-      </SessionProvider>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/1.6.5/flowbite.min.js" async />
-    </>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/1.6.5/flowbite.min.js" async />
+      </Provider>
+    </SessionProvider>
   )
 }
+
+export default wrapper.withRedux(App)
