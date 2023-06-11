@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { signOut } from "next-auth/react"
 import Image from 'next/image';
 
@@ -8,7 +8,11 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { toast } from 'react-toastify';
 
 import { selectSession } from "../store/authSlice"
-import { selectIsStarted, selectSelectedTracks, setSelectedTracks, removeSelectedTracksItem, selectNameOfPlaylist, setNameOfPlaylist } from "../store/appSlice"
+import { selectIsStarted, selectSelectedTracks, setSelectedTracks, removeSelectedTracksItem, selectNameOfPlaylist, setNameOfPlaylist, setUseSavedSession, selectUseSavedSession } from "../store/appSlice"
+import { 
+    selectSessionSaved, setSessionSaved, 
+    selectSavedNameOfPlaylist, setSavedNameOfPlaylist } from "../store/sessionSlice"
+
 import { useDispatch, useSelector } from "react-redux"
 
 
@@ -18,9 +22,14 @@ const Navbar = () => {
 	 * Redux State
 	 */
 	const session = useSelector(selectSession)
+	const use_saved_session = useSelector(selectUseSavedSession)
 	const isStarted = useSelector(selectIsStarted)
 	const selectedTracks = useSelector(selectSelectedTracks)
 	const nameOfPlaylist = useSelector(selectNameOfPlaylist)
+
+	const sessionSaved = useSelector(selectSessionSaved)
+	const saved_nameOfPlaylist = useSelector(selectSavedNameOfPlaylist)
+
 	const dispatch = useDispatch()
 
 
@@ -53,6 +62,7 @@ const Navbar = () => {
 	 */
 	const setPlaylistName = async (val) => {
 		dispatch(setNameOfPlaylist(val))
+		dispatch(setSavedNameOfPlaylist(val))
 	}
 
 	/**
@@ -100,7 +110,6 @@ const Navbar = () => {
 			});
 		}
 	}
-
 	
 	/**
 	 * Render the navbar
@@ -130,6 +139,13 @@ const Navbar = () => {
 						<Dropdown.Item className='text-black' onClick={() => window.location.reload(false)}>
 							Reload
 						</Dropdown.Item>
+						
+						{sessionSaved ? 
+							<Dropdown.Item className='text-black' onClick={() => dispatch(setSessionSaved(false)) && dispatch(setUseSavedSession(false)) && window.location.reload(false)}>
+								Clear session
+							</Dropdown.Item>
+						: ''}
+						
 						<Dropdown.Item className='text-black'>
 							<button data-modal-target="shortcutsModal" data-modal-toggle="shortcutsModal" className="" type="button">
 								Shortcuts

@@ -1,6 +1,7 @@
 import { configureStore, combineReducers } from "@reduxjs/toolkit"
 import { authSlice } from "./authSlice"
 import { appSlice } from "./appSlice"
+import { sessionSlice } from "./sessionSlice"
 import { createWrapper } from "next-redux-wrapper"
 import { persistReducer, persistStore } from "redux-persist"
 import storage from "redux-persist/lib/storage"
@@ -8,6 +9,7 @@ import storage from "redux-persist/lib/storage"
 const rootReducer = combineReducers({
   [authSlice.name]: authSlice.reducer,
   [appSlice.name]: appSlice.reducer,
+  [sessionSlice.name]: sessionSlice.reducer,
 })
 
 const makeConfiguredStore = () =>
@@ -27,7 +29,7 @@ export const makeStore = () => {
     const persistConfig = {
       key: "nextjs",
       blacklist: ["app", "auth"],
-      whitelist: [""],
+      whitelist: ["session"],
       storage
     }
 

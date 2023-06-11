@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-import React from 'react'
+import React, { useEffect } from 'react'
 import dynamic from "next/dynamic"
 import { RefreshOutline, CloseOutline, FlameOutline, HeartOutline, PlayCircleOutline, PauseCircleOutline } from 'react-ionicons'
 import { toast } from 'react-toastify';
@@ -19,9 +19,9 @@ import {
     selectCurrentIndex, setCurrentIndex,
     selectNumberOfPage, 
     selectTotal} from "../../store/appSlice"
+import { addSavedPassedTracksItem, addSavedSelectedTracksItem, addSavedSelectedTracksItemAtFirst, selectSavedCurrentIndex, setSavedCurrentIndex, setSavedCurrentPage, setSavedPassedTracks, setSavedSelectedTracks, setSavedTracklist } from "../../store/sessionSlice"
 
 import { useDispatch, useSelector } from "react-redux"
-
 import fetchWebApi from '../../controller/fetchWebApi'
 
 const TinderCard = dynamic(() => import('../../libs/react-tinder-card.js'), {
@@ -42,12 +42,14 @@ const PlayerScreen = () => {
 	const isPlaying = useSelector(selectIsPlaying)
 	const currentPage = useSelector(selectCurrentPage)
 	const currentIndex = useSelector(selectCurrentIndex)
+	const saved_currentIndex = useSelector(selectSavedCurrentIndex)
 	const numberOfPage = useSelector(selectNumberOfPage)
 	const total = useSelector(selectTotal)
 	const trackslist = useSelector(selectTracksList)
 	const selectedTracks = useSelector(selectSelectedTracks)
 	const passedTracks = useSelector(selectPassedTracks)
     const searchResultUsed = useSelector(selectSearchResultUsed)
+
 	const dispatch = useDispatch()
 
 
@@ -106,14 +108,17 @@ const PlayerScreen = () => {
 
         if((track) && !passedTracks.includes(track.uri)){
             dispatch(addPassedTracksItem( track.uri ))
+            dispatch(addSavedPassedTracksItem( track.uri ))
 
             // If liked
             if(direction == "right"){
                 if(!selectedTracks.find((el) => el.id == track.id)){
                     if(mode == 'superlike'){
                         dispatch(addSelectedTracksItemAtFirst(track))
+                        dispatch(addSavedSelectedTracksItemAtFirst(track))
                     }else{
                         dispatch(addSelectedTracksItem( track ))
+                        dispatch(addSavedSelectedTracksItem( track ))
                     }
                 }
             }
@@ -158,6 +163,7 @@ const PlayerScreen = () => {
                     }));
                     
                     dispatch(setTracksList([...trackslist, ...__trackslist]))
+                    dispatch(setSavedTracklist([...trackslist, ...__trackslist]))
         
                     // Play preview
                     const track = [...trackslist, ...__trackslist][SPOTIFY_LIMIT * currentPage];
@@ -168,6 +174,7 @@ const PlayerScreen = () => {
         
                     dispatch(setIsPlaying(true));
                     dispatch(setCurrentPage(currentPage + 1));
+                    dispatch(setSavedCurrentPage(currentPage + 1));
                 }
             }
         }
@@ -198,6 +205,7 @@ const PlayerScreen = () => {
                     }));
 
                     dispatch(setTracksList([...trackslist, ...__trackslist]))
+                    dispatch(setSavedTracklist([...trackslist, ...__trackslist]))
         
                     // Play preview
                     const track = [...trackslist, ...__trackslist][((currentPage == 2 ? 100 : 50 * currentPage))];
@@ -208,6 +216,7 @@ const PlayerScreen = () => {
 
                     dispatch(setIsPlaying(true));
                     dispatch(setCurrentPage(currentPage + 1));
+                    dispatch(setSavedCurrentPage(currentPage + 1));
                 }
                 
             }
@@ -231,6 +240,7 @@ const PlayerScreen = () => {
 
             // On met à jour l'index
             dispatch(setCurrentIndex(pos - 1))
+            dispatch(setSavedCurrentIndex(pos - 1))
             
             // On joue la musique précédente
             playMusic(prev_track)
@@ -239,9 +249,11 @@ const PlayerScreen = () => {
         if(prev_track && prev_track.preview_url){
             const __passed_tracks = passedTracks.filter(function(el) { return el != prev_track.uri; }); 
             dispatch(setPassedTracks(__passed_tracks))
+            dispatch(setSavedPassedTracks(__passed_tracks))
 
             const __selected_tracks = selectedTracks.filter(function(el) { return el.uri != prev_track.uri; }); 
             dispatch(setSelectedTracks(__selected_tracks))
+            dispatch(setSavedSelectedTracks(__selected_tracks))
         }
     }
 
@@ -307,9 +319,25 @@ const PlayerScreen = () => {
      */
     const updateCurrentIndex = (val) => {
         dispatch(setCurrentIndex(val))
+        dispatch(setSavedCurrentIndex(val))
     }
 
 
+    useEffect(() => {
+        setTimeout(()=>{
+            const y = Math.floor(Math.random() * (600 - -600 + 1)) + -600;
+            
+            for (let pos = 0; pos <= saved_currentIndex; pos++) {
+                if (document.getElementById(`trackcard-${pos}`)){
+                    if(selectedTracks.find((el) => el.id == trackslist[pos].id)){
+                        document.getElementById(`trackcard-${pos}`).style.transform = `translate3d(-1572.43px, ${y}px, 0px) rotate(-44.9424deg)`
+                    }else{
+                        document.getElementById(`trackcard-${pos}`).style.transform = `translate3d(1469.28px, ${y}px, 0px) rotate(41.9943deg)`
+                    }
+                }
+            }
+        }, 100)
+    }, [isStarted, trackslist]);
 
 	/**
 	 * Render the App screen
@@ -350,6 +378,7 @@ const PlayerScreen = () => {
                             swipeThreshold={100}
                             id={`trackcard-${item.position}`}
                         >
+
                             <div data-name={item.name} className={`w-full h-full relative overflow-hidden bg-cover bg-center`} style={{ backgroundImage: `url(${item.cover})` }}>
                                 <div className="absolute bottom-0 w-full flex justify-between px-6 pb-6 pt-28 gradientback bg-white">
                                     <div className="w-full">

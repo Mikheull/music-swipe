@@ -5,6 +5,18 @@ import Image from 'next/image';
 
 import { selectSession } from "../../store/authSlice"
 import { 
+    selectSavedAppMode, setSavedAppMode,
+    selectSavedTracklist, setSavedTracklist,
+    selectSavedPassedTracks, setSavedPassedTracks,
+    selectSavedSelectedTracks, setSavedSelectedTracks,
+    selectSavedSearchResultUsed, setSavedSearchResultUsed,
+    selectSavedNumberOfPage, setSavedNumberOfPage,
+    selectSavedTotal, setSavedTotal,
+    selectSavedCurrentPage, setSavedCurrentPage,
+    selectSavedCurrentIndex, setSavedCurrentIndex,
+    selectSavedNameOfPlaylist, setSavedNameOfPlaylist,
+    selectSessionSaved, setSessionSaved } from "../../store/sessionSlice"
+import { 
     selectIsStarted, setIsStarted, 
     setIsPlaying, 
     setIsFinish,
@@ -16,7 +28,11 @@ import {
     setNumberOfPage,
     setCurrentIndex,
     setTotal,
-    setCurrentPage } from "../../store/appSlice"
+    setCurrentPage,
+    setUseSavedSession,
+    setPassedTracks,
+    setSelectedTracks,
+    setNameOfPlaylist} from "../../store/appSlice"
 import { useDispatch, useSelector } from "react-redux"
 
 import fetchWebApi from '../../controller/fetchWebApi'
@@ -33,6 +49,19 @@ const StartScreen = () => {
 	const pre_tracks = useSelector(selectPreTracks)
 	const search_result = useSelector(selectSearchResult)
 	const isStarted = useSelector(selectIsStarted)
+
+	const sessionSaved = useSelector(selectSessionSaved)
+	const saved_appMode = useSelector(selectSavedAppMode)
+	const saved_tracklist = useSelector(selectSavedTracklist)
+	const saved_passedTracks = useSelector(selectSavedPassedTracks)
+	const saved_selectedTracks = useSelector(selectSavedSelectedTracks)
+	const saved_searchResultUsed = useSelector(selectSavedSearchResultUsed)
+	const saved_numberOfPage = useSelector(selectSavedNumberOfPage)
+	const saved_total = useSelector(selectSavedTotal)
+	const saved_nameOfPlaylist = useSelector(selectSavedNameOfPlaylist)
+	const saved_currentPage = useSelector(selectSavedCurrentPage)
+	const saved_currentIndex = useSelector(selectSavedCurrentIndex)
+
 	const dispatch = useDispatch()
 
     /**
@@ -140,6 +169,13 @@ const StartScreen = () => {
         dispatch(setIsPlaying(true))
         dispatch(setAppMode(mode))
 
+        dispatch(setSessionSaved(true))
+        dispatch(setSavedAppMode(mode))
+        dispatch(setSavedPassedTracks([]))
+        dispatch(setSavedSelectedTracks([]))
+        dispatch(setSavedCurrentIndex(0))
+        dispatch(setSavedNameOfPlaylist('My Custom Playlist'))
+
         let __trackslist = [];
 
         if(mode == 'playlist'){
@@ -167,6 +203,13 @@ const StartScreen = () => {
                 dispatch(setNumberOfPage((finded_playlist && finded_playlist.tracks.total) ? Math.ceil(finded_playlist.tracks.total / SPOTIFY_LIMIT) : 0))
                 dispatch(setTotal(finded_playlist.tracks.total))
                 dispatch(setCurrentPage((finded_playlist.tracks.total <= SPOTIFY_LIMIT) ? 1 : 2))
+
+                // Session
+                dispatch(setSavedSearchResultUsed(id))
+                dispatch(setSavedTracklist(__trackslist))
+                dispatch(setSavedNumberOfPage((finded_playlist && finded_playlist.tracks.total) ? Math.ceil(finded_playlist.tracks.total / SPOTIFY_LIMIT) : 0))
+                dispatch(setSavedTotal(finded_playlist.tracks.total))
+                dispatch(setSavedCurrentPage((finded_playlist.tracks.total <= SPOTIFY_LIMIT) ? 1 : 2))
             }
         }
         
@@ -194,6 +237,12 @@ const StartScreen = () => {
                 dispatch(setNumberOfPage((finded_playlist && finded_playlist.total) ? Math.ceil(finded_playlist.total / SPOTIFY_LIMIT) : 0))
                 dispatch(setTotal(finded_playlist.total))
                 dispatch(setCurrentPage(1))
+
+                // Session
+                dispatch(setSavedTracklist(__trackslist))
+                dispatch(setSavedNumberOfPage((finded_playlist && finded_playlist.total) ? Math.ceil(finded_playlist.total / SPOTIFY_LIMIT) : 0))
+                dispatch(setSavedTotal(finded_playlist.total))
+                dispatch(setSavedCurrentPage((1)))
             }
         }
 
@@ -205,7 +254,6 @@ const StartScreen = () => {
                 // document.getElementById('preview-music').volume = 0.05;
             }
         }
-
     }
 
 
@@ -217,6 +265,8 @@ const StartScreen = () => {
         dispatch(setAppMode('playlist'))
         dispatch(setIsFinish(false))
         dispatch(setCurrentIndex(0))
+
+        dispatch(setSavedAppMode('playlist'))
 
         // On reset les styles des cartes
         var elems = document.querySelectorAll('.trackcard');
@@ -251,6 +301,13 @@ const StartScreen = () => {
             dispatch(setNumberOfPage((finded_playlist && finded_playlist.tracks.total) ? Math.ceil(finded_playlist.tracks.total / SPOTIFY_LIMIT) : 0))
             dispatch(setTotal(finded_playlist.tracks.total))
             dispatch(setCurrentPage((finded_playlist.tracks.total <= SPOTIFY_LIMIT) ? 1 : 2))
+
+            // Session
+            dispatch(setSavedSearchResultUsed(id))
+            dispatch(setSavedTracklist(__trackslist))
+            dispatch(setSavedNumberOfPage((finded_playlist && finded_playlist.tracks.total) ? Math.ceil(finded_playlist.tracks.total / SPOTIFY_LIMIT) : 0))
+            dispatch(setSavedTotal(finded_playlist.tracks.total))
+            dispatch(setSavedCurrentPage((finded_playlist.tracks.total <= SPOTIFY_LIMIT) ? 1 : 2))
         }
 
         const track = __trackslist[0];
@@ -263,6 +320,36 @@ const StartScreen = () => {
         }
     }
 
+
+    /**
+     * Start App with saved session
+     */
+    const startAppWithSession = async () => {
+        dispatch(setUseSavedSession(true));
+        dispatch(setSessionSaved(true))
+        dispatch(setAppMode(saved_appMode))
+        dispatch(setIsStarted(true))
+        dispatch(setIsPlaying(true))
+
+        dispatch(setPassedTracks(saved_passedTracks))
+        dispatch(setSelectedTracks(saved_selectedTracks))
+        dispatch(setTracksList(saved_tracklist))
+        dispatch(setNumberOfPage(saved_numberOfPage))
+        dispatch(setTotal(saved_total))
+        dispatch(setCurrentPage(saved_currentPage))
+        dispatch(setCurrentIndex(saved_currentIndex))
+        dispatch(setSearchResultUsed(saved_searchResultUsed))
+        dispatch(setNameOfPlaylist(saved_nameOfPlaylist))
+
+        const track = saved_tracklist[saved_currentIndex];
+        if((track)){
+            if(track && track.preview_url){
+                document.getElementById('preview-music').setAttribute('src', track.preview_url);
+                document.getElementById('preview-music').play();
+                // document.getElementById('preview-music').volume = 0.05;
+            }
+        }
+    }
 
 	/**
 	 * Render the Start screen
@@ -289,6 +376,14 @@ const StartScreen = () => {
                                 Search a playlist
                             </button>
                         </div>
+                        
+                        {sessionSaved ? <>
+                            <div className='flex justify-center mt-4'>
+                                <div className="font-powergrotesk">
+                                    There is a saved session, <a className='underline decoration-primary cursor-pointer' onClick={() => startAppWithSession()} >click here</a> to restore it
+                                </div>
+                            </div>
+                        </> : '' }
                     </div>
                 </div>
             </div>

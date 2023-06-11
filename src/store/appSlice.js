@@ -15,7 +15,8 @@ const initialState = {
   total: 0,
   currentPage: 1,
   currentIndex: 0,
-  nameOfPlaylist: "My Custom Playlist"
+  nameOfPlaylist: "My Custom Playlist",
+  useSavedSession: false,
 }
 
 export const appSlice = createSlice({
@@ -87,7 +88,10 @@ export const appSlice = createSlice({
     },
     setNameOfPlaylist: (state, action) => {
       state.nameOfPlaylist = action.payload
-    }
+    },
+    setUseSavedSession: (state, action) => {
+      state.useSavedSession = action.payload
+    },
   }
 })
 
@@ -110,7 +114,8 @@ export const {
   setTotal, 
   setCurrentPage, 
   setCurrentIndex, 
-  setNameOfPlaylist 
+  setNameOfPlaylist,
+  setUseSavedSession 
 } = appSlice.actions
 
 export const selectIsStarted = state => state.app?.isStarted
@@ -128,5 +133,6 @@ export const selectTotal = state => state.app?.total
 export const selectCurrentPage = state => state.app?.currentPage
 export const selectCurrentIndex = state => state.app?.currentIndex
 export const selectNameOfPlaylist = state => state.app?.nameOfPlaylist
+export const selectUseSavedSession = state => state.app?.useSavedSession
 
 export default appSlice.reducer
