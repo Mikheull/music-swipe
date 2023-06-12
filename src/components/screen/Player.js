@@ -328,7 +328,7 @@ const PlayerScreen = () => {
             const y = Math.floor(Math.random() * (600 - -600 + 1)) + -600;
             
             for (let pos = 0; pos <= saved_currentIndex; pos++) {
-                if (document.getElementById(`trackcard-${pos}`)){
+                if (document.getElementById(`trackcard-${pos}`) && trackslist[pos] && trackslist[pos].id){
                     if(selectedTracks.find((el) => el.id == trackslist[pos].id)){
                         document.getElementById(`trackcard-${pos}`).style.transform = `translate3d(-1572.43px, ${y}px, 0px) rotate(-44.9424deg)`
                     }else{

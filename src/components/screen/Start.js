@@ -179,6 +179,9 @@ const StartScreen = () => {
         let __trackslist = [];
 
         if(mode == 'playlist'){
+            const el = document.querySelector('[data-modal-hide="searchplaylistModal"]');
+            el.click();
+
             const finded_playlist = await fetchWebApi(
                 `v1/playlists/${id}`, 
                 'GET', 
@@ -261,6 +264,9 @@ const StartScreen = () => {
      * Continue App with playlist mode
      */
     const continueApp = async (id = '') => {
+        const el = document.querySelector('[data-modal-hide="searchplaylistModal"]');
+        el.click();
+
         dispatch(setIsPlaying(true))
         dispatch(setAppMode('playlist'))
         dispatch(setIsFinish(false))
